@@ -59,6 +59,22 @@ npm run build
 
 构建结果输出到 `dist/`。
 
+## 一键同步到 GitHub
+
+项目内置本地同步脚本：`scripts/sync-push.sh`
+
+- 用途：将当前分支推送到远程 `origin`
+- 凭据：读取本地 `.local-secrets/github_user.txt` 和 `.local-secrets/github_pat.txt`
+- 安全：`.local-secrets/` 已加入 `.gitignore`，不会被提交到远程仓库
+
+执行方式：
+
+```bash
+./scripts/sync-push.sh
+```
+
+说明：脚本会临时使用带认证的远程地址进行 push，完成后自动恢复为不带 token 的安全远程地址。
+
 ## 常见问题
 
 - 页面空白/样式未更新：先强制刷新（Ctrl+F5）。
