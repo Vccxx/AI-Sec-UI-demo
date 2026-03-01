@@ -75,6 +75,36 @@ npm run build
 
 说明：脚本会临时使用带认证的远程地址进行 push，完成后自动恢复为不带 token 的安全远程地址。
 
+## 公网服务器一键部署
+
+新增部署脚本：`scripts/deploy_server.sh`（Ubuntu/Debian）
+
+默认行为：
+
+- 拉取/更新仓库代码（`main`）
+- 安装 Node.js、依赖、PM2
+- 构建并以 `preview` 模式启动服务
+- 监听 `0.0.0.0:4173`
+
+直接执行：
+
+```bash
+chmod +x scripts/deploy_server.sh
+./scripts/deploy_server.sh
+```
+
+可选参数示例：
+
+```bash
+APP_NAME=sec-ui APP_DIR=/srv/sec-ui PORT=8080 MODE=preview BRANCH=main ./scripts/deploy_server.sh
+```
+
+若你要直接跑开发模式：
+
+```bash
+MODE=dev PORT=4173 ./scripts/deploy_server.sh
+```
+
 ## 常见问题
 
 - 页面空白/样式未更新：先强制刷新（Ctrl+F5）。
