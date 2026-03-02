@@ -1,6 +1,6 @@
 import React from 'react'
 import { Activity, Sparkles } from 'lucide-react'
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 
 function AttackPieTooltip({ active, payload }) {
   if (!active || !payload || payload.length === 0) return null
@@ -59,45 +59,44 @@ function HeaderStats({ noiseReduction, attackClassStats }) {
           <span>攻击分类统计</span>
         </div>
         <div className="chart-area">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-              <Pie
-                data={attackClassStats}
-                dataKey="count"
-                nameKey="category"
-                cx="35%"
-                cy="50%"
-                outerRadius="74%"
-                innerRadius="50%"
-                paddingAngle={2}
-                stroke="rgba(2,6,23,0.9)"
-                strokeWidth={1}
-              >
-                {attackClassStats.map((entry) => (
-                  <Cell key={entry.category} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                content={<AttackPieTooltip />}
-                wrapperStyle={{ outline: 'none' }}
-              />
-              <Legend
-                layout="vertical"
-                align="right"
-                verticalAlign="middle"
-                iconSize={8}
-                formatter={(value, entry) => `${value}  ${entry?.payload?.count ?? 0}`}
-                wrapperStyle={{
-                  color: '#94a3b8',
-                  fontSize: 11,
-                  lineHeight: '16px',
-                  right: 2,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="chart-flex">
+            <div className="pie-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <Pie
+                    data={attackClassStats}
+                    dataKey="count"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius="80%"
+                    innerRadius="54%"
+                    paddingAngle={2}
+                    stroke="rgba(2,6,23,0.9)"
+                    strokeWidth={1}
+                  >
+                    {attackClassStats.map((entry) => (
+                      <Cell key={entry.category} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    content={<AttackPieTooltip />}
+                    wrapperStyle={{ outline: 'none' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="pie-legend-list">
+              {attackClassStats.map((item) => (
+                <div key={item.category} className="pie-legend-item">
+                  <span className="dot" style={{ backgroundColor: item.color }} />
+                  <span className="label">{item.category}</span>
+                  <strong>{item.count}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

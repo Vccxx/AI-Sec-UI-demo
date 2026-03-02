@@ -160,6 +160,59 @@ body {
   min-height: 64px;
 }
 
+.chart-flex {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 44% 56%;
+  gap: 8px;
+}
+
+.pie-wrap {
+  min-width: 0;
+  min-height: 0;
+}
+
+.pie-legend-list {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding-right: 2px;
+}
+
+.pie-legend-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 3px 6px;
+}
+
+.pie-legend-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.pie-legend-item .label {
+  color: #94a3b8;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pie-legend-item strong {
+  color: #e2e8f0;
+  font-size: 11px;
+}
+
 .queue-wrap,
 .correlation-wrap,
 .reasoning-wrap,
@@ -304,7 +357,10 @@ body {
 .queue-list::-webkit-scrollbar,
 .traffic-list::-webkit-scrollbar,
 .dialogue-list::-webkit-scrollbar,
-.source-status-list::-webkit-scrollbar {
+.source-status-list::-webkit-scrollbar,
+.report-list::-webkit-scrollbar,
+.report-editor textarea::-webkit-scrollbar,
+.alert-modal::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
@@ -313,9 +369,39 @@ body {
 .queue-list::-webkit-scrollbar-thumb,
 .traffic-list::-webkit-scrollbar-thumb,
 .dialogue-list::-webkit-scrollbar-thumb,
-.source-status-list::-webkit-scrollbar-thumb {
+.source-status-list::-webkit-scrollbar-thumb,
+.report-list::-webkit-scrollbar-thumb,
+.report-editor textarea::-webkit-scrollbar-thumb,
+.alert-modal::-webkit-scrollbar-thumb {
   background: rgba(51, 65, 85, 0.9);
   border-radius: 999px;
+}
+
+.report-list,
+.report-editor textarea,
+.alert-modal {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.35) rgba(15, 23, 42, 0.62);
+}
+
+.report-list::-webkit-scrollbar-track,
+.report-editor textarea::-webkit-scrollbar-track,
+.alert-modal::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.62);
+  border-radius: 999px;
+}
+
+.report-list::-webkit-scrollbar-thumb,
+.report-editor textarea::-webkit-scrollbar-thumb,
+.alert-modal::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.45), rgba(14, 116, 144, 0.75));
+  border: 1px solid rgba(15, 23, 42, 0.8);
+}
+
+.report-list::-webkit-scrollbar-thumb:hover,
+.report-editor textarea::-webkit-scrollbar-thumb:hover,
+.alert-modal::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.65), rgba(14, 116, 144, 0.95));
 }
 
 .event-card {
@@ -1189,8 +1275,17 @@ body {
   border: 1px solid rgba(30, 41, 59, 0.9);
   color: #e2e8f0;
   border-radius: 8px;
-  padding: 8px;
+  padding: 8px 34px 8px 10px;
   font-family: inherit;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #67e8f9 50%),
+    linear-gradient(135deg, #67e8f9 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 52%,
+    calc(100% - 12px) 52%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
 }
 
 .primary-btn,
@@ -1410,6 +1505,15 @@ body {
 
   .chart-area {
     height: 190px;
+  }
+
+  .chart-flex {
+    grid-template-columns: 1fr;
+    grid-template-rows: 120px 1fr;
+  }
+
+  .pie-legend-list {
+    max-height: 64px;
   }
 
   .left-panel,
