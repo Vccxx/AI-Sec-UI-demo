@@ -35,6 +35,15 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
     return events.filter((event) => event.disposalStatus === attackFilter)
   }, [attackFilter, events])
 
+  const sortedAttackEvents = useMemo(() => {
+    const severityOrder = { 紧急: 3, 高危: 2, 中危: 1 }
+    return [...filteredAttackEvents].sort((a, b) => {
+      const diff = (severityOrder[b.severity] ?? 0) - (severityOrder[a.severity] ?? 0)
+      if (diff !== 0) return diff
+      return b.time.localeCompare(a.time)
+    })
+  }, [filteredAttackEvents])
+
   const filteredNoiseEvents = useMemo(() => {
     if (noiseFilter === '全部') return noiseEvents
     return noiseEvents.filter((item) => item.reviewStatus === noiseFilter)
@@ -101,8 +110,8 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
 
           <div className="queue-scrollbox">
             <div className="queue-list">
-              {filteredAttackEvents.length === 0 ? <div className="empty-tip">当前筛选条件下暂无告警。</div> : null}
-              {filteredAttackEvents.map((event) => {
+              {sortedAttackEvents.length === 0 ? <div className="empty-tip">当前筛选条件下暂无告警。</div> : null}
+              {sortedAttackEvents.map((event) => {
                 const active = selectedItem.type === 'attack' && event.id === selectedItem.id
 
                 return (
