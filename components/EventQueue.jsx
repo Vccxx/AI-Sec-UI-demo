@@ -5,6 +5,7 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
   const [activeTab, setActiveTab] = useState('attack')
   const [attackFilter, setAttackFilter] = useState('全部')
   const [noiseFilter, setNoiseFilter] = useState('全部')
+  const [attackSort, setAttackSort] = useState('time')
 
   const statusCount = useMemo(
     () =>
@@ -38,11 +39,17 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
   const sortedAttackEvents = useMemo(() => {
     const severityOrder = { 紧急: 3, 高危: 2, 中危: 1 }
     return [...filteredAttackEvents].sort((a, b) => {
-      const diff = (severityOrder[b.severity] ?? 0) - (severityOrder[a.severity] ?? 0)
-      if (diff !== 0) return diff
-      return b.time.localeCompare(a.time)
+      if (attackSort === 'severity') {
+        const diff = (severityOrder[b.severity] ?? 0) - (severityOrder[a.severity] ?? 0)
+        if (diff !== 0) return diff
+        return b.time.localeCompare(a.time)
+      }
+
+      const timeDiff = b.time.localeCompare(a.time)
+      if (timeDiff !== 0) return timeDiff
+      return (severityOrder[b.severity] ?? 0) - (severityOrder[a.severity] ?? 0)
     })
-  }, [filteredAttackEvents])
+  }, [attackSort, filteredAttackEvents])
 
   const filteredNoiseEvents = useMemo(() => {
     if (noiseFilter === '全部') return noiseEvents
@@ -109,6 +116,14 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
           </div>
 
           <div className="queue-scrollbox">
+            <div className="queue-sorter">
+              <span>排序方式</span>
+              <select value={attackSort} onChange={(event) => setAttackSort(event.target.value)}>
+                <option value="time">按时间</option>
+                <option value="severity">按危急程度</option>
+              </select>
+            </div>
+
             <div className="queue-list">
               {sortedAttackEvents.length === 0 ? <div className="empty-tip">当前筛选条件下暂无告警。</div> : null}
               {sortedAttackEvents.map((event) => {

@@ -399,6 +399,32 @@ body {
   padding: 8px;
 }
 
+.queue-sorter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.58);
+  padding: 6px 8px;
+}
+
+.queue-sorter span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.queue-sorter select {
+  border: 1px solid rgba(51, 65, 85, 0.85);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.76);
+  color: #dbeafe;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
 .queue-scrollbox::-webkit-scrollbar,
 .queue-list::-webkit-scrollbar,
 .traffic-list::-webkit-scrollbar,
