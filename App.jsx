@@ -16,6 +16,12 @@ import {
 import './App.css'
 
 function App() {
+  const [attackEvents, setAttackEvents] = useState(
+    mockEvents.map((event) => ({
+      ...event,
+      disposalStatus: event.disposalStatus === '已处置' ? '已处置' : '未处置',
+    })),
+  )
   const [views, setViews] = useState([
     { id: 'main', title: '主视图', type: 'main', eventIds: [], noiseIds: [] },
   ])
@@ -31,10 +37,10 @@ function App() {
   )
 
   const currentEvents = useMemo(() => {
-    if (activeView?.type !== 'filter') return mockEvents
+    if (activeView?.type !== 'filter') return attackEvents
     const idSet = new Set(activeView.eventIds)
-    return mockEvents.filter((event) => idSet.has(event.id))
-  }, [activeView])
+    return attackEvents.filter((event) => idSet.has(event.id))
+  }, [activeView, attackEvents])
 
   const currentNoiseEvents = useMemo(() => {
     if (activeView?.type !== 'filter') return aiNoiseEvents
@@ -249,7 +255,7 @@ function App() {
       .trim()
     const keywords = keywordText.split(/\s+/).filter(Boolean)
 
-    const filteredAttack = mockEvents.filter((event) => {
+    const filteredAttack = attackEvents.filter((event) => {
       const textMatched =
         keywords.length === 0 ||
         keywords.some(
@@ -324,6 +330,19 @@ function App() {
     }
   }
 
+  const handleCompleteDisposal = (eventId) => {
+    setAttackEvents((prev) =>
+      prev.map((event) =>
+        event.id === eventId
+          ? {
+              ...event,
+              disposalStatus: '已处置',
+            }
+          : event,
+      ),
+    )
+  }
+
   const closeView = (viewId) => {
     if (viewId === 'main') return
     setViews((prev) => prev.filter((view) => view.id !== viewId))
@@ -389,7 +408,7 @@ function App() {
             />
           </div>
           <div className="panel right-bottom">
-            <ActionPanel selectedEvent={selectedEvent} />
+            <ActionPanel selectedEvent={selectedEvent} onCompleteDisposal={handleCompleteDisposal} />
           </div>
         </aside>
       </main>

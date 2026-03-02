@@ -11,10 +11,11 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
     () =>
       events.reduce(
         (acc, event) => {
-          acc[event.disposalStatus] = (acc[event.disposalStatus] ?? 0) + 1
+          const normalized = event.disposalStatus === '已处置' ? '已处置' : '未处置'
+          acc[normalized] = (acc[normalized] ?? 0) + 1
           return acc
         },
-        { 未处置: 0, 处置中: 0, 已处置: 0 },
+        { 未处置: 0, 已处置: 0 },
       ),
     [events],
   )
@@ -33,7 +34,7 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
 
   const filteredAttackEvents = useMemo(() => {
     if (attackFilter === '全部') return events
-    return events.filter((event) => event.disposalStatus === attackFilter)
+    return events.filter((event) => (event.disposalStatus === '已处置' ? '已处置' : '未处置') === attackFilter)
   }, [attackFilter, events])
 
   const sortedAttackEvents = useMemo(() => {
@@ -98,19 +99,19 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
               </button>
               <button
                 type="button"
-                className={`summary-status handling ${attackFilter === '处置中' ? 'active' : ''}`}
-                onClick={() => setAttackFilter((prev) => (prev === '处置中' ? '全部' : '处置中'))}
-              >
-                <span>处置中</span>
-                <strong>{statusCount['处置中']}</strong>
-              </button>
-              <button
-                type="button"
                 className={`summary-status handled ${attackFilter === '已处置' ? 'active' : ''}`}
                 onClick={() => setAttackFilter((prev) => (prev === '已处置' ? '全部' : '已处置'))}
               >
                 <span>已处置</span>
                 <strong>{statusCount['已处置']}</strong>
+              </button>
+              <button
+                type="button"
+                className={`summary-status neutral ${attackFilter === '全部' ? 'active' : ''}`}
+                onClick={() => setAttackFilter('全部')}
+              >
+                <span>全部</span>
+                <strong>{events.length}</strong>
               </button>
             </div>
           </div>
@@ -141,7 +142,9 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
                         <AlertTriangle size={14} />
                         {event.severity}
                       </span>
-                      <span className={`dispose-state state-${event.disposalStatus}`}>{event.disposalStatus}</span>
+                      <span className={`dispose-state state-${event.disposalStatus === '已处置' ? '已处置' : '未处置'}`}>
+                        {event.disposalStatus === '已处置' ? '已处置' : '未处置'}
+                      </span>
                     </div>
                     <h3>{event.title}</h3>
                     <p>{event.summary}</p>

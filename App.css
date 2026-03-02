@@ -1605,6 +1605,84 @@ body {
   color: #fdba74;
 }
 
+.action-dialog-list {
+  min-height: 0;
+  max-height: 150px;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+}
+
+.action-dialog-item {
+  border: 1px solid rgba(51, 65, 85, 0.82);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+}
+
+.action-dialog-item.user {
+  background: rgba(14, 116, 144, 0.2);
+  color: #a5f3fc;
+}
+
+.action-dialog-item.bot-warning {
+  background: rgba(127, 29, 29, 0.35);
+  border-color: rgba(239, 68, 68, 0.48);
+  color: #fecaca;
+}
+
+.action-dialog-item.bot-success {
+  background: rgba(6, 78, 59, 0.35);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #a7f3d0;
+}
+
+.action-quick-ops {
+  display: grid;
+  gap: 8px;
+}
+
+.action-sample-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.action-sample-list button {
+  border: 1px solid rgba(34, 211, 238, 0.52);
+  background: rgba(14, 116, 144, 0.16);
+  color: #a5f3fc;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.action-input-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.action-input-form input {
+  width: 100%;
+  background: rgba(2, 6, 23, 0.74);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.action-confirm-row {
+  display: flex;
+  gap: 8px;
+}
+
 .action-btn {
   width: 100%;
   border-color: rgba(251, 146, 60, 0.62);
