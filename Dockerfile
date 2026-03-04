@@ -1,7 +1,10 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/library/node:20-alpine AS builder
 
 WORKDIR /app
+
+# Use npm mirror in China
+RUN npm config set registry https://registry.npmmirror.com
 
 COPY package*.json ./
 RUN npm ci
@@ -10,7 +13,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM registry.cn-hangzhou.aliyuncs.com/library/nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
