@@ -47,6 +47,7 @@ fi
 
 log "Syncing repository"
 if [[ -d "${APP_DIR}/.git" ]]; then
+  git -C "${APP_DIR}" remote set-url origin "${REPO_URL}"
   git -C "${APP_DIR}" fetch origin
   git -C "${APP_DIR}" checkout "${BRANCH}"
   git -C "${APP_DIR}" pull --ff-only origin "${BRANCH}" || {
