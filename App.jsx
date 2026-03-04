@@ -214,9 +214,7 @@ function App() {
           stepIndex: 2,
         },
       ],
-      actions: pending
-        ? ['提交人工复核', '补充资产侧证据', '暂缓自动处置']
-        : ['加入误报白名单', '同步规则优化库', '关闭重复告警推送'],
+      actions: ['一键封禁攻击IP', '柔性灰度处置'],
     }
   }, [selectedItem, selectedAttackEvent, selectedNoiseEvent])
 

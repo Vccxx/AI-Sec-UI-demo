@@ -81,7 +81,7 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
       return `本事件攻击结果判定为：${selectedEvent.attackResult}。建议结合响应码变化与主机侧日志进一步确认是否形成实际入侵。`
     }
     if (query.includes('处置') || query.includes('怎么做') || query.includes('建议')) {
-      return `优先执行：${selectedEvent.actions[0]}。随后按剧本完成 ${selectedEvent.actions[1]} 与 ${selectedEvent.actions[2]}，并同步提交报告中心归档。`
+      return `优先执行：${selectedEvent.actions[0]}。建议结合 ${selectedEvent.actions[1]} 完成后续闭环，并同步提交报告中心归档。`
     }
     return `已结合“${selectedEvent.focusType}”场景复核，该事件时间特征为“${selectedEvent.timeWindow}”。如需我继续深挖，请追问“攻击结果判定依据”或“全流量排查范围”。`
   }

@@ -246,7 +246,7 @@ export const mockEvents = [
         stepIndex: 3,
       },
     ],
-    actions: ['一键封禁源IP', '启用SQL注入防护策略', '下发主机加固基线'],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
   {
     id: 'evt-flow-spot',
@@ -435,7 +435,7 @@ export const mockEvents = [
         stepIndex: 4,
       },
     ],
-    actions: ['隔离受害主机', '一键切换流量清洗', '限速可疑网段'],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
   {
     id: 'evt-bruteforce-gw',
@@ -633,7 +633,7 @@ export const mockEvents = [
         stepIndex: 3,
       },
     ],
-    actions: ['冻结高风险账号', '封禁攻击网段', '强制开启MFA校验'],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
   {
     id: 'evt-lateral-oms',
@@ -813,7 +813,7 @@ export const mockEvents = [
         stepIndex: 2,
       },
     ],
-    actions: ['阻断东西向访问', '隔离可疑内网主机', '触发应急响应剧本'],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
 ]
 
