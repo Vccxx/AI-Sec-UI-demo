@@ -764,7 +764,7 @@ body {
 
 .attacker-node {
   position: absolute;
-  left: 8%;
+  left: 16%;
   top: 50%;
   transform: translate(-50%, -50%);
   border: 1px solid rgba(239, 68, 68, 0.88);
@@ -775,7 +775,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-width: 120px;
+  min-width: 104px;
   z-index: 2;
 }
 
@@ -822,10 +822,17 @@ body {
   transition: all 0.3s ease;
 }
 
+.server-node span {
+  max-width: 86px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .server-node::before {
   content: '受攻击';
   position: absolute;
-  top: -8px;
+  top: -5px;
   right: 8px;
   border: 1px solid rgba(239, 68, 68, 0.65);
   background: rgba(127, 29, 29, 0.52);
@@ -2825,4 +2832,239 @@ body {
     grid-template-columns: 1fr;
     gap: 4px;
   }
+}
+
+/* Contrast safety: dark bg -> light text, light bg -> dark text */
+.topology-board,
+.server-canvas,
+.asset-detail-panel,
+.traffic-panel,
+.auth-basis-panel,
+.auth-basis-item,
+.status-item,
+.trace-topology-board,
+.terminal-box,
+.report-editor,
+.action-intro,
+.action-dialog-item,
+.dialogue-item.bot,
+.alert-raw-block,
+.alert-meta-item {
+  color: #eaf2ff;
+}
+
+.topology-board .panel-title,
+.server-canvas .panel-title,
+.asset-detail-panel h4,
+.traffic-title,
+.status-item strong,
+.auth-basis-main strong,
+.raw-head,
+.trace-title,
+.followup-title,
+.command-menu strong,
+.alert-modal-head strong {
+  color: #f3f8ff;
+}
+
+.topology-board span,
+.server-canvas span,
+.asset-detail-panel span,
+.traffic-panel span,
+.auth-basis-main span,
+.status-item span,
+.alert-meta-item span,
+.traffic-row-side em,
+.dialogue-item.bot,
+.action-dialog-item {
+  color: #d2e1f6;
+}
+
+.summary-total,
+.summary-status,
+.queue-sorter,
+.queue-scrollbox,
+.event-card,
+.report-item,
+.template-source-tip,
+.template-create-box input,
+.queue-sorter select,
+.report-controls select,
+.followup-form input,
+.action-input-form input,
+.alert-modal,
+.command-menu button,
+.chat-message,
+.chat-text-content,
+.trend-meta-item,
+.efficiency-stage {
+  color: #173a63;
+}
+
+.summary-total strong,
+.summary-status strong,
+.event-card h3,
+.report-item strong,
+.template-name-inline,
+.template-source-inline,
+.report-head-inline strong,
+.chat-role-label,
+.analysis-result-block span {
+  color: #14355d;
+}
+
+.event-card p,
+.event-time,
+.event-target,
+.report-item span,
+.report-item em,
+.template-source-tip span,
+.analysis-result-block p,
+.chat-text-content,
+.followup-form input::placeholder,
+.action-input-form input::placeholder,
+.template-create-box input::placeholder {
+  color: #567293;
+}
+
+/* Status tag contrast fix on light surfaces */
+.dispose-state {
+  color: #27476c;
+  background: rgba(240, 247, 255, 0.9);
+  border-color: #b9cfe8;
+}
+
+.dispose-state.state-未处置 {
+  color: #9f1239;
+  background: rgba(255, 241, 242, 0.95);
+  border-color: rgba(225, 29, 72, 0.34);
+}
+
+.dispose-state.state-处置中,
+.dispose-state.state-待复核 {
+  color: #9a3412;
+  background: rgba(255, 247, 237, 0.95);
+  border-color: rgba(217, 119, 6, 0.34);
+}
+
+.dispose-state.state-已处置,
+.dispose-state.state-已忽略 {
+  color: #166534;
+  background: rgba(240, 253, 244, 0.95);
+  border-color: rgba(22, 163, 74, 0.34);
+}
+
+/* Fine-tune contrast for Correlation and Action modules */
+.correlation-wrap .asset-detail-panel,
+.correlation-wrap .traffic-panel,
+.correlation-wrap .auth-basis-panel,
+.correlation-wrap .auth-basis-item,
+.correlation-wrap .status-item,
+.action-wrap .action-intro,
+.action-wrap .action-dialog-item,
+.action-wrap .chat-message,
+.action-wrap .chat-text-content {
+  color: #173a63;
+}
+
+.correlation-wrap .asset-detail-panel h4,
+.correlation-wrap .traffic-title,
+.correlation-wrap .auth-basis-main strong,
+.correlation-wrap .status-item strong,
+.action-wrap .conversation-header,
+.action-wrap .chat-role-label,
+.action-wrap .action-intro strong {
+  color: #14355d;
+}
+
+.correlation-wrap .asset-kv span,
+.correlation-wrap .traffic-row-main span,
+.correlation-wrap .traffic-row-side em,
+.correlation-wrap .auth-basis-main span,
+.correlation-wrap .status-item span,
+.action-wrap .action-intro span,
+.action-wrap .chat-text-content,
+.action-wrap .action-dialog-item,
+.action-wrap .action-input-form input::placeholder {
+  color: #567293;
+}
+
+.correlation-wrap .detail-btn,
+.action-wrap .detail-btn,
+.action-wrap .primary-btn,
+.action-wrap .secondary-btn,
+.action-wrap .action-btn {
+  color: #0f3f8d;
+}
+
+/* Temporary global text override: all text to dark */
+.app-shell,
+.app-shell * {
+  color: #173a63 !important;
+}
+
+.app-shell input::placeholder,
+.app-shell textarea::placeholder {
+  color: #567293 !important;
+}
+
+/* Increase chat font size for readability */
+.reasoning-wrap .chat-role-label,
+.action-wrap .chat-role-label {
+  font-size: 12px;
+}
+
+.reasoning-wrap .chat-role-label,
+.reasoning-wrap .analysis-result-block span {
+  font-size: 14px;
+}
+
+.reasoning-wrap .chat-role {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.action-wrap .chat-role {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+/* Keep severity tags in semantic deep colors */
+.severity.warning {
+  color: #b45309 !important;
+}
+
+.severity.critical {
+  color: #b91c1c !important;
+}
+
+.severity svg {
+  color: inherit !important;
+  stroke: currentColor;
+}
+
+.severity.warning svg,
+.severity.warning svg * {
+  color: #b45309 !important;
+  stroke: #b45309 !important;
+}
+
+.severity.critical svg,
+.severity.critical svg * {
+  color: #b91c1c !important;
+  stroke: #b91c1c !important;
+}
+
+.reasoning-wrap .chat-text-content,
+.action-wrap .chat-text-content,
+.reasoning-wrap .analysis-result-block p,
+.action-wrap .action-intro span {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.action-wrap .chat-text,
+.action-wrap .action-dialog-item {
+  font-size: 14px;
+  line-height: 1.5;
 }

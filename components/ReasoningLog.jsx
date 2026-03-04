@@ -44,12 +44,39 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
 
   const finalAnalysis = useMemo(() => {
     const topActions = (selectedEvent.actions ?? []).slice(0, 2).join('、')
-    return `综合判定：本次告警为「${selectedEvent.focusType}」场景，攻击结果为「${selectedEvent.attackResult}」。攻击源 ${selectedEvent.sourceIp} 对目标「${selectedEvent.target}」形成高风险威胁，建议优先执行 ${topActions}。`
+
+    const attackedHosts = (selectedEvent.relatedServers ?? [])
+      .map((server) => `${server.name}(${server.ip})`)
+      .join('、')
+
+    const trafficTimes = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.time))).sort()
+    const timeFeature =
+      trafficTimes.length > 0
+        ? `${trafficTimes[0]} 至 ${trafficTimes[trafficTimes.length - 1]} 持续出现同源访问，窗口为「${selectedEvent.timeWindow}」`
+        : `在「${selectedEvent.timeWindow}」窗口内出现连续攻击行为`
+
+    const methods = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.method))).filter(Boolean)
+    const paths = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.path))).filter(Boolean)
+    const statusCodes = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.status))).filter(Boolean)
+
+    const methodFeature = methods.length > 0 ? methods.join(' / ') : '多种协议行为混合'
+    const pathFeature = paths.length > 0 ? paths.slice(0, 3).join('、') : '关键业务路径'
+    const statusFeature = statusCodes.length > 0 ? statusCodes.join(' -> ') : '状态码异常波动'
+
+    return [
+      `综合判定：本次告警属于「${selectedEvent.focusType}」场景，攻击结果为「${selectedEvent.attackResult}」，攻击源 ${selectedEvent.sourceIp} 对目标「${selectedEvent.target}」形成持续威胁。`,
+      `受攻击主机：${attackedHosts || selectedEvent.target}。`,
+      `攻击时间特征：${timeFeature}，呈现高频且阶段性增强的访问节奏。`,
+      `攻击手法特征：请求方式以 ${methodFeature} 为主，重点命中 ${pathFeature}，响应结果出现 ${statusFeature} 等可疑变化。`,
+      `处置建议：优先执行 ${topActions}，并结合主机侧日志与边界设备告警完成闭环复核。`,
+    ].join('\n')
   }, [selectedEvent])
 
   const [question, setQuestion] = useState('')
   const [dialogues, setDialogues] = useState([])
   const [expandAll, setExpandAll] = useState(false)
+  const [typedAnalysis, setTypedAnalysis] = useState('')
+  const [analysisTyping, setAnalysisTyping] = useState(false)
   const dialogueListRef = useRef(null)
 
   const getRoleMeta = (role) => {
@@ -90,6 +117,23 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
     setDialogues([])
     setExpandAll(false)
   }, [selectedEvent])
+
+  useEffect(() => {
+    let index = 0
+    setTypedAnalysis('')
+    setAnalysisTyping(true)
+
+    const timer = window.setInterval(() => {
+      index += 1
+      setTypedAnalysis(finalAnalysis.slice(0, index))
+      if (index >= finalAnalysis.length) {
+        window.clearInterval(timer)
+        setAnalysisTyping(false)
+      }
+    }, 12)
+
+    return () => window.clearInterval(timer)
+  }, [finalAnalysis])
 
   useEffect(() => {
     const node = dialogueListRef.current
@@ -179,7 +223,10 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
 
             <div className="analysis-result-block">
               <span>分析结果</span>
-              <p>{finalAnalysis}</p>
+              <p>
+                {typedAnalysis}
+                {analysisTyping ? <i className="cursor">|</i> : null}
+              </p>
             </div>
           </div>
 

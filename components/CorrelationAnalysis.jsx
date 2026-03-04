@@ -100,13 +100,28 @@ function CorrelationAnalysis({ selectedEvent }) {
     })
   }
 
-  const serverPositions = [
-    { x: 22, y: 22 },
-    { x: 80, y: 26 },
-    { x: 62, y: 78 },
-    { x: 20, y: 74 },
-  ]
-  const attackerPosition = { x: 8, y: 50 }
+  const serverPositions = useMemo(() => {
+    const count = Math.max(1, selectedEvent.relatedServers.length)
+    if (count === 1) return [{ x: 74, y: 50 }]
+
+    const centerX = 58
+    const centerY = 50
+    const radiusX = count >= 4 ? 20 : 18
+    const radiusY = count >= 4 ? 30 : 26
+    const startDeg = -70
+    const endDeg = 70
+    const step = count === 1 ? 0 : (endDeg - startDeg) / (count - 1)
+
+    return selectedEvent.relatedServers.map((_, index) => {
+      const angle = ((startDeg + step * index) * Math.PI) / 180
+      return {
+        x: centerX + Math.cos(angle) * radiusX,
+        y: centerY + Math.sin(angle) * radiusY,
+      }
+    })
+  }, [selectedEvent.relatedServers])
+
+  const attackerPosition = { x: 16, y: 50 }
 
   return (
     <div className="correlation-wrap">
