@@ -11,6 +11,7 @@ import {
   attackTrend24h,
   defaultTemplates,
   mockEvents,
+  sampleReportLibrary,
   sampleReports,
 } from './data/mockData'
 import './App.css'
@@ -500,9 +501,9 @@ function App() {
           selectedTemplate={selectedTemplate}
           onTemplateChange={setSelectedTemplate}
           onCreateTemplate={handleCreateTemplate}
-          onGenerate={handleGenerateReport}
           reports={reports}
           onUpdateReport={handleUpdateReport}
+          sampleReportLibrary={sampleReportLibrary}
         />
       </header>
 

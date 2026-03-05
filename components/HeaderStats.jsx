@@ -1,5 +1,5 @@
 import React from 'react'
-import { Activity, Sparkles } from 'lucide-react'
+import { Activity, FileText, Sparkles } from 'lucide-react'
 import ReportGeneratorDock from './ReportGeneratorDock'
 import {
   Area,
@@ -44,9 +44,9 @@ function HeaderStats({
   selectedTemplate,
   onTemplateChange,
   onCreateTemplate,
-  onGenerate,
   reports,
   onUpdateReport,
+  sampleReportLibrary,
 }) {
   const totalAlerts24h = attackTrend24h.reduce((sum, item) => sum + item.count, 0)
   const peak = Math.max(...attackTrend24h.map((item) => item.count))
@@ -80,10 +80,6 @@ function HeaderStats({
 
   return (
     <div className="header-wrap">
-      <div className="demo-card">
-        <span>【demo】智能安全运营中心</span>
-      </div>
-
       <div className="stat-card">
         <div className="card-title">
           <Sparkles size={16} />
@@ -163,17 +159,26 @@ function HeaderStats({
                 <strong>{totalAlerts24h}</strong>
               </div>
             </div>
-
-            <ReportGeneratorDock
-              templates={templates}
-              selectedTemplate={selectedTemplate}
-              onTemplateChange={onTemplateChange}
-              onCreateTemplate={onCreateTemplate}
-              onGenerate={onGenerate}
-              reports={reports}
-              onUpdateReport={onUpdateReport}
-            />
           </div>
+        </div>
+      </div>
+
+      <div className="chart-card report-center-card">
+        <div className="card-title">
+          <FileText size={16} />
+          <span>报告中心</span>
+        </div>
+        <div className="chart-area report-center-area">
+          <ReportGeneratorDock
+            templates={templates}
+            selectedTemplate={selectedTemplate}
+            onTemplateChange={onTemplateChange}
+            onCreateTemplate={onCreateTemplate}
+            reports={reports}
+            onUpdateReport={onUpdateReport}
+            sampleReportLibrary={sampleReportLibrary}
+            showTitle={false}
+          />
         </div>
       </div>
     </div>

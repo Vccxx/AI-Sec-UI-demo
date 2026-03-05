@@ -1,14 +1,66 @@
 import React, { useEffect, useState } from 'react'
-import { BellRing, Send, Siren, ShieldBan, ShieldCheck } from 'lucide-react'
+import { BellRing, Eye, Send, Siren, ShieldBan, ShieldCheck } from 'lucide-react'
 
 function ReportCenter({ selectedEvent }) {
+  const sampleDirectiveOrders = [
+    {
+      id: 'order-seed-01',
+      type: '全网联合处置通告',
+      priority: '高',
+      scope: '全网单位',
+      target: '互联网终端',
+      status: '已完成',
+      signoff: '值长已签收',
+      feedback: '值长已通过 eLink 下发联合处置指令，各目标单位按预案执行。',
+      time: '08:46:12',
+      body: '请值长通过 eLink 向全网单位下发联合处置通告：针对互联网终端钓鱼攻击立即启用柔性引流、会话冻结与证据回传机制。',
+    },
+    {
+      id: 'order-seed-02',
+      type: '重点单位协同拦截',
+      priority: '高',
+      scope: '核心单位',
+      target: '员工邮箱',
+      status: '执行中',
+      signoff: '值长已签收',
+      feedback: '值长已转发协同拦截任务，重点单位正在执行会话冻结与链接阻断。',
+      time: '09:03:25',
+      body: '请值长通过 eLink 向核心单位下发协同拦截指令：员工邮箱异常会话执行分级拦截并同步返回执行日志。',
+    },
+    {
+      id: 'order-seed-03',
+      type: '关停系统指令',
+      priority: '严重',
+      scope: '指定单位',
+      target: '远程办公账号',
+      status: '执行中',
+      signoff: '值长已签收',
+      feedback: '值长已确认关停指令并下发目标单位，正在分阶段切断访问。',
+      time: '09:28:40',
+      body: '请值长通过 eLink 向指定单位下发关停指令：远程办公账号关联系统执行临时关停与审计留存，待复核后逐步恢复。',
+    },
+    {
+      id: 'order-seed-04',
+      type: '应急升级通告',
+      priority: '严重',
+      scope: '省级单位',
+      target: '企业IM账号',
+      status: '已签收',
+      signoff: '值长已签收',
+      feedback: '值长已签收应急升级通告并完成下发，等待各单位回执汇总。',
+      time: '09:41:09',
+      body: '请值长通过 eLink 下发应急升级通告：省级单位统一提升防护等级并进入连续值守模式，按小时回报处置进度。',
+    },
+  ]
+
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
   const [directiveType, setDirectiveType] = useState('全网联合处置通告')
   const [directiveScope, setDirectiveScope] = useState('全网单位')
   const [directivePriority, setDirectivePriority] = useState('高')
   const [directiveTarget, setDirectiveTarget] = useState(selectedEvent.target)
   const [directiveBody, setDirectiveBody] = useState('')
-  const [orders, setOrders] = useState([])
+  const [orders, setOrders] = useState(sampleDirectiveOrders)
+  const [previewOrder, setPreviewOrder] = useState(null)
 
   const directiveCards = [
     { type: '全网联合处置通告', icon: BellRing, tip: '发现威胁后同步通知各单位联动拦截。' },
@@ -55,11 +107,12 @@ function ReportCenter({ selectedEvent }) {
       scope: directiveScope,
       target: directiveTarget,
       status: isShutdown ? '执行中' : '已签收',
-      signoff: isShutdown ? '关键单位 5/6 已签收' : '全网单位 12/12 已签收',
+      signoff: '值长已签收',
       feedback: isShutdown
-        ? `关停指令已下发，${directiveTarget} 正在执行分阶段流量切断。`
-        : `${directiveScope} 已完成协同策略加载，等待最终执行回执。`,
+        ? `值长已通过 eLink 下发关停指令，${directiveTarget} 正在执行分阶段流量切断。`
+        : `值长已通过 eLink 下发处置指令，${directiveScope} 正在回传执行回执。`,
       time: timestamp,
+      body: directiveBody,
     }
 
     setOrders((prev) => [order, ...prev])
@@ -159,7 +212,13 @@ function ReportCenter({ selectedEvent }) {
                 <div key={order.id} className="directive-item">
                   <div className="directive-item-head">
                     <strong>{order.type}</strong>
-                    <em>{order.time}</em>
+                    <div className="directive-item-head-right">
+                      <em>{order.time}</em>
+                      <button type="button" className="detail-btn directive-detail-btn" onClick={() => setPreviewOrder(order)}>
+                        <Eye size={13} />
+                        指令详情
+                      </button>
+                    </div>
                   </div>
                   <div className="directive-item-meta">
                     <span>目标：{order.target}</span>
@@ -175,6 +234,51 @@ function ReportCenter({ selectedEvent }) {
           </div>
         </div>
       </div>
+
+      {previewOrder ? (
+        <div className="alert-modal-mask" onClick={() => setPreviewOrder(null)}>
+          <div className="alert-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="alert-modal-head">
+              <strong>{previewOrder.type} - 指令详情</strong>
+              <button type="button" className="close-btn" onClick={() => setPreviewOrder(null)}>
+                关闭
+              </button>
+            </div>
+
+            <div className="alert-meta-grid">
+              <div className="alert-meta-item">
+                <span>下发对象</span>
+                <strong>{previewOrder.target}</strong>
+              </div>
+              <div className="alert-meta-item">
+                <span>下发范围</span>
+                <strong>{previewOrder.scope}</strong>
+              </div>
+              <div className="alert-meta-item">
+                <span>紧急级别</span>
+                <strong>{previewOrder.priority}</strong>
+              </div>
+              <div className="alert-meta-item">
+                <span>当前状态</span>
+                <strong>{previewOrder.status}</strong>
+              </div>
+              <div className="alert-meta-item">
+                <span>签收状态</span>
+                <strong>{previewOrder.signoff}</strong>
+              </div>
+              <div className="alert-meta-item">
+                <span>下发时间</span>
+                <strong>{previewOrder.time}</strong>
+              </div>
+            </div>
+
+            <div className="alert-raw-block">
+              <strong>指令内容</strong>
+              <pre>{previewOrder.body ?? previewOrder.feedback}</pre>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

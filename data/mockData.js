@@ -1499,6 +1499,45 @@ export const sampleReports = [
   },
 ]
 
+export const sampleReportLibrary = [
+  {
+    id: 'library-01',
+    category: '联合处置通告',
+    template: '联合防御通告模板',
+    eventTitle: '全网单位联合处置演练样例',
+    timestamp: '2026/3/3 09:20:14',
+    content:
+      '【背景】跨区域告警关联命中，需统一下发协同策略。\n【动作】全网单位同步启用灰度引流、账号风险校验和证据回传。\n【回执】12/12 单位签收，10/12 单位完成首轮处置。',
+  },
+  {
+    id: 'library-02',
+    category: '应急升级报告',
+    template: '应急升级快报模板',
+    eventTitle: '一级应急升级执行样例',
+    timestamp: '2026/3/3 11:06:39',
+    content:
+      '【背景】攻击源持续扩大，跨业务系统出现同步风险信号。\n【动作】由二级响应升级至一级响应，联动SOC/网关/终端完成分层处置。\n【回执】核心链路恢复稳定，风险面收敛。',
+  },
+  {
+    id: 'library-03',
+    category: '关停指令复盘',
+    template: '系统关停复盘模板',
+    eventTitle: '高风险系统临时关停样例',
+    timestamp: '2026/3/3 14:42:51',
+    content:
+      '【背景】核心系统出现被控迹象，存在横向扩散风险。\n【动作】执行临时关停指令并保留审计链路，按阶段恢复白名单业务。\n【结论】未出现二次扩散，恢复窗口控制在30分钟内。',
+  },
+  {
+    id: 'library-04',
+    category: '钓鱼专项',
+    template: '终端钓鱼处置模板',
+    eventTitle: '员工邮箱钓鱼投递专项样例',
+    timestamp: '2026/3/3 16:18:07',
+    content:
+      '【背景】员工邮箱与浏览器会话同时触发异常认证。\n【动作】自动执行柔性灰度处置，实施会话冻结、链接引流与样本回收。\n【回执】攻击链完成闭环，终端侧未见持续外联。',
+  },
+]
+
 export const aiNoiseEvents = [
   {
     id: 'noise-01',

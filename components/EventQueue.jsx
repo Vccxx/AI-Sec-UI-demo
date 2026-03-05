@@ -130,57 +130,63 @@ function EventQueue({
       {activeTab === 'attack' ? (
         <>
           <div className="queue-summary">
-            <div className="queue-toolbar">
-              <div className="summary-total inline">
-                <span>告警总数</span>
+            <div className="display-settings-box">
+              <div className="display-settings-head">
+                <span>告警显示设置</span>
                 <strong>{filteredAttackEvents.length}/{events.length}</strong>
               </div>
-              <div className="queue-sorter inline">
-                <span>排序方式</span>
-                <select value={attackSort} onChange={(event) => setAttackSort(event.target.value)}>
-                  <option value="time">按时间</option>
-                  <option value="severity">按危急程度</option>
-                </select>
+              <div className="display-settings-controls">
+                <div className="status-filter-row">
+                  <button
+                    type="button"
+                    className={`category-chip ${attackFilter === '未处置' ? 'active' : ''}`}
+                    onClick={() => setAttackFilter((prev) => (prev === '未处置' ? '全部' : '未处置'))}
+                  >
+                    <span>未处置</span>
+                    <strong>{statusCount['未处置']}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`category-chip ${attackFilter === '已处置' ? 'active' : ''}`}
+                    onClick={() => setAttackFilter((prev) => (prev === '已处置' ? '全部' : '已处置'))}
+                  >
+                    <span>已处置</span>
+                    <strong>{statusCount['已处置']}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`category-chip ${attackFilter === '全部' ? 'active' : ''}`}
+                    onClick={() => setAttackFilter('全部')}
+                  >
+                    <span>全部</span>
+                    <strong>{events.length}</strong>
+                </button>
+                </div>
+
+                <div className="queue-sorter inline compact">
+                  <span>排序方式</span>
+                  <select value={attackSort} onChange={(event) => setAttackSort(event.target.value)}>
+                    <option value="time">按时间</option>
+                    <option value="severity">按危急程度</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="summary-status-grid">
-              <button
-                type="button"
-                className={`summary-status unhandled ${attackFilter === '未处置' ? 'active' : ''}`}
-                onClick={() => setAttackFilter((prev) => (prev === '未处置' ? '全部' : '未处置'))}
-              >
-                <span>未处置</span>
-                <strong>{statusCount['未处置']}</strong>
-              </button>
-              <button
-                type="button"
-                className={`summary-status handled ${attackFilter === '已处置' ? 'active' : ''}`}
-                onClick={() => setAttackFilter((prev) => (prev === '已处置' ? '全部' : '已处置'))}
-              >
-                <span>已处置</span>
-                <strong>{statusCount['已处置']}</strong>
-              </button>
-              <button
-                type="button"
-                className={`summary-status neutral ${attackFilter === '全部' ? 'active' : ''}`}
-                onClick={() => setAttackFilter('全部')}
-              >
-                <span>全部</span>
-                <strong>{events.length}</strong>
-              </button>
-            </div>
-            <div className="category-filter-row">
-              {['全部', '内网事件', '外网事件', '钓鱼事件'].map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  className={`category-chip ${categoryFilter === category ? 'active' : ''}`}
-                  onClick={() => setCategoryFilter(category)}
-                >
-                  <span>{category}</span>
-                  <strong>{category === '全部' ? events.length : categoryCount[category] ?? 0}</strong>
-                </button>
-              ))}
+            <div className="event-category-box">
+              <div className="event-category-head">事件类型过滤</div>
+              <div className="category-filter-row">
+                {['内网事件', '外网事件', '钓鱼事件', '全部'].map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    className={`category-chip ${categoryFilter === category ? 'active' : ''}`}
+                    onClick={() => setCategoryFilter(category)}
+                  >
+                    <span>{category}</span>
+                    <strong>{category === '全部' ? events.length : categoryCount[category] ?? 0}</strong>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

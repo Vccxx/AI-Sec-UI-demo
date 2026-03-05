@@ -1,43 +1,64 @@
-import React, { useMemo, useState } from 'react'
-import { Download, Eye, FileText, PlusCircle, Save, Settings2 } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Clock3, Download, Eye, FileText, Save, Settings2 } from 'lucide-react'
 
 function ReportGeneratorDock({
   templates,
   selectedTemplate,
   onTemplateChange,
   onCreateTemplate,
-  onGenerate,
   reports,
   onUpdateReport,
+  sampleReportLibrary,
+  showTitle = true,
 }) {
-  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false)
+  const [showConfigModal, setShowConfigModal] = useState(false)
+  const [showListModal, setShowListModal] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateSource, setNewTemplateSource] = useState('')
-  const [previewReportId, setPreviewReportId] = useState('')
+  const [templateDrafts, setTemplateDrafts] = useState({})
+  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true)
+  const [autoGenerateCycle, setAutoGenerateCycle] = useState('每日')
+  const [autoGenerateTime, setAutoGenerateTime] = useState('08:30')
+  const [selectedSources, setSelectedSources] = useState(['WAF日志', 'EDR', '流量分析'])
+  const [reportScope, setReportScope] = useState('current')
+  const [sampleOverrides, setSampleOverrides] = useState({})
+  const [previewReport, setPreviewReport] = useState(null)
   const [draftContent, setDraftContent] = useState('')
-  const [activePopover, setActivePopover] = useState('')
 
   const selectedTemplateMeta = useMemo(
     () => templates.find((tpl) => tpl.name === selectedTemplate) ?? templates[0],
     [selectedTemplate, templates],
   )
 
-  const previewReport = useMemo(
-    () => reports.find((report) => report.id === previewReportId),
-    [previewReportId, reports],
-  )
+  const currentTemplateDraft = templateDrafts[selectedTemplate] ?? ''
 
-  const handleTemplateSelect = (value) => {
-    if (value === '__create_new__') {
-      setIsCreatingTemplate(true)
-      return
+  const sampleReports = useMemo(() => {
+    return (sampleReportLibrary ?? []).map((item) => ({
+      ...item,
+      content: sampleOverrides[item.id] ?? item.content,
+    }))
+  }, [sampleOverrides, sampleReportLibrary])
+
+  const listReports = reportScope === 'current' ? reports : sampleReports
+  const canPortal = typeof window !== 'undefined' && typeof document !== 'undefined'
+
+  const allSources = ['WAF日志', 'EDR', '流量分析', 'SIEM', '身份审计', '威胁情报']
+
+  useEffect(() => {
+    if (!showConfigModal && !showListModal) {
+      setPreviewReport(null)
+      setDraftContent('')
     }
+  }, [showConfigModal, showListModal])
 
-    setIsCreatingTemplate(false)
-    onTemplateChange(value)
+  const toggleSource = (source) => {
+    setSelectedSources((prev) =>
+      prev.includes(source) ? prev.filter((item) => item !== source) : [...prev, source],
+    )
   }
 
-  const handleCreate = () => {
+  const createTemplate = () => {
     const name = newTemplateName.trim()
     const source = newTemplateSource.trim()
     if (!name || !source) return
@@ -45,24 +66,27 @@ function ReportGeneratorDock({
     onTemplateChange(name)
     setNewTemplateName('')
     setNewTemplateSource('')
-    setIsCreatingTemplate(false)
   }
 
-  const openPreview = (report) => {
-    setPreviewReportId(report.id)
+  const openPreview = (report, sourceType) => {
+    setPreviewReport({ ...report, sourceType })
     setDraftContent(report.content ?? '')
   }
 
-  const saveDraft = () => {
-    if (!previewReportId) return
-    onUpdateReport(previewReportId, draftContent)
+  const savePreview = () => {
+    if (!previewReport) return
+    if (previewReport.sourceType === 'current') {
+      onUpdateReport(previewReport.id, draftContent)
+      return
+    }
+    setSampleOverrides((prev) => ({ ...prev, [previewReport.id]: draftContent }))
   }
 
   const downloadReport = (report) => {
     const fileName = `${report.template}-${report.eventTitle}-${report.timestamp.replace(/[\s:/]/g, '-')}.txt`
     const text = [
       `报告模板: ${report.template}`,
-      `数据来源: ${report.templateDataSource ?? '未配置'}`,
+      `报告类别: ${report.category ?? '运行报告'}`,
       `事件名称: ${report.eventTitle}`,
       `生成时间: ${report.timestamp}`,
       '',
@@ -80,110 +104,190 @@ function ReportGeneratorDock({
 
   return (
     <>
-      <div className="report-dock compact" onMouseLeave={() => setActivePopover('')}>
-        <button type="button" className="report-dock-icon primary" onClick={onGenerate} title="生成报告">
-          <PlusCircle size={13} />
-          <span>生成</span>
-        </button>
-
-        <div className="report-dock-pop-wrap">
-          <button
-            type="button"
-            className="report-dock-icon"
-            onClick={() => setActivePopover((prev) => (prev === 'template' ? '' : 'template'))}
-            onMouseEnter={() => setActivePopover('template')}
-            title="模板管理"
-          >
-            <Settings2 size={13} />
-            <span>模板</span>
+      <div className="report-dock compact">
+        {showTitle ? <div className="report-hub-title">报告中心</div> : null}
+        <div className="report-hub-actions">
+          <button type="button" className="report-hub-btn" onClick={() => setShowConfigModal(true)}>
+            <Settings2 size={12} />
+            报告配置
           </button>
-
-          {activePopover === 'template' ? (
-            <div className="report-dock-popover">
-              <div className="report-dock-pop-head">报告模板</div>
-              <select
-                className="report-dock-select"
-                value={selectedTemplate}
-                onChange={(event) => handleTemplateSelect(event.target.value)}
-              >
-                {templates.map((tpl) => (
-                  <option key={tpl.name} value={tpl.name}>
-                    {tpl.name}
-                  </option>
-                ))}
-                <option value="__create_new__">+ 创建新模板</option>
-              </select>
-
-              <div className="report-dock-source">
-                <span title={selectedTemplateMeta?.name ?? '未配置模板'}>{selectedTemplateMeta?.name ?? '未配置模板'}</span>
-                <strong title={selectedTemplateMeta?.dataSource ?? '未配置'}>
-                  {selectedTemplateMeta?.dataSource ?? '未配置'}
-                </strong>
-              </div>
-
-              {isCreatingTemplate ? (
-                <div className="report-dock-create">
-                  <input
-                    value={newTemplateName}
-                    onChange={(event) => setNewTemplateName(event.target.value)}
-                    placeholder="新模板"
-                  />
-                  <input
-                    value={newTemplateSource}
-                    onChange={(event) => setNewTemplateSource(event.target.value)}
-                    placeholder="数据来源"
-                  />
-                  <button type="button" className="secondary-btn" onClick={handleCreate}>
-                    新增
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="report-dock-pop-wrap">
-          <button
-            type="button"
-            className="report-dock-icon"
-            onClick={() => setActivePopover((prev) => (prev === 'recent' ? '' : 'recent'))}
-            onMouseEnter={() => setActivePopover('recent')}
-            title="最近报告"
-          >
-            <FileText size={13} />
-            <span>报告</span>
+          <button type="button" className="report-hub-btn" onClick={() => setShowListModal(true)}>
+            <FileText size={12} />
+            报告列表
           </button>
-
-          {activePopover === 'recent' ? (
-            <div className="report-dock-popover report-dock-popover-wide">
-              <div className="report-dock-pop-head">最近报告</div>
-              <div className="report-dock-list">
-                {reports.slice(0, 5).map((report) => (
-                  <div key={report.id} className="report-dock-item">
-                    <strong title={report.eventTitle}>{report.eventTitle}</strong>
-                    <em>{report.timestamp}</em>
-                    <div className="report-dock-actions">
-                      <button type="button" onClick={() => openPreview(report)} title="查看">
-                        <Eye size={12} />
-                      </button>
-                      <button type="button" onClick={() => downloadReport(report)} title="下载">
-                        <Download size={12} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
 
-      {previewReport ? (
-        <div className="alert-modal-mask" onClick={() => setPreviewReportId('')}>
-          <div className="alert-modal" onClick={(event) => event.stopPropagation()}>
+      {showConfigModal && canPortal
+        ? createPortal(
+        <div className="alert-modal-mask report-global-mask" onClick={() => setShowConfigModal(false)}>
+          <div className="alert-modal report-hub-modal report-global-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="alert-modal-head">
+              <strong>报告配置</strong>
+              <button type="button" className="close-btn" onClick={() => setShowConfigModal(false)}>
+                关闭
+              </button>
+            </div>
+
+            <div className="report-config-grid">
+              <div className="report-config-card">
+                <span>数据源配置</span>
+                <div className="source-chip-list">
+                  {allSources.map((source) => (
+                    <button
+                      key={source}
+                      type="button"
+                      className={`source-chip ${selectedSources.includes(source) ? 'active' : ''}`}
+                      onClick={() => toggleSource(source)}
+                    >
+                      {source}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="report-config-card">
+                <span>模板选择</span>
+                <select value={selectedTemplate} onChange={(event) => onTemplateChange(event.target.value)}>
+                  {templates.map((tpl) => (
+                    <option key={tpl.name} value={tpl.name}>
+                      {tpl.name}
+                    </option>
+                  ))}
+                </select>
+                <em>数据来源：{selectedTemplateMeta?.dataSource ?? '未配置'}</em>
+              </div>
+
+              <div className="report-config-card">
+                <span>模板编辑</span>
+                <textarea
+                  value={currentTemplateDraft}
+                  onChange={(event) =>
+                    setTemplateDrafts((prev) => ({ ...prev, [selectedTemplate]: event.target.value }))
+                  }
+                  placeholder="编辑模板结构，例如：摘要、攻击链路、处置回执、复盘建议"
+                />
+              </div>
+
+              <div className="report-config-card">
+                <span>模板新建</span>
+                <input
+                  value={newTemplateName}
+                  onChange={(event) => setNewTemplateName(event.target.value)}
+                  placeholder="输入模板名称"
+                />
+                <input
+                  value={newTemplateSource}
+                  onChange={(event) => setNewTemplateSource(event.target.value)}
+                  placeholder="输入模板数据源"
+                />
+                <button type="button" className="secondary-btn" onClick={createTemplate}>
+                  新建模板
+                </button>
+              </div>
+
+              <div className="report-config-card">
+                <span>定时自动生成</span>
+                <label className="inline-check">
+                  <input
+                    type="checkbox"
+                    checked={autoGenerateEnabled}
+                    onChange={(event) => setAutoGenerateEnabled(event.target.checked)}
+                  />
+                  启用自动生成
+                </label>
+                <div className="schedule-row">
+                  <select value={autoGenerateCycle} onChange={(event) => setAutoGenerateCycle(event.target.value)}>
+                    <option value="每小时">每小时</option>
+                    <option value="每日">每日</option>
+                    <option value="每周">每周</option>
+                  </select>
+                  <input
+                    type="time"
+                    value={autoGenerateTime}
+                    onChange={(event) => setAutoGenerateTime(event.target.value)}
+                  />
+                </div>
+                <em>
+                  <Clock3 size={12} /> 自动生成策略：{autoGenerateEnabled ? `${autoGenerateCycle} ${autoGenerateTime}` : '已关闭'}
+                </em>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )
+        : null}
+
+      {showListModal && canPortal
+        ? createPortal(
+        <div className="alert-modal-mask report-global-mask" onClick={() => setShowListModal(false)}>
+          <div className="alert-modal report-hub-modal report-global-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="alert-modal-head">
+              <strong>报告列表</strong>
+              <button type="button" className="close-btn" onClick={() => setShowListModal(false)}>
+                关闭
+              </button>
+            </div>
+
+            <div className="report-list-switch">
+              <button
+                type="button"
+                className={reportScope === 'current' ? 'active' : ''}
+                onClick={() => setReportScope('current')}
+              >
+                当前报告
+              </button>
+              <button
+                type="button"
+                className={reportScope === 'sample' ? 'active' : ''}
+                onClick={() => setReportScope('sample')}
+              >
+                样例报告数据
+              </button>
+            </div>
+
+            <div className="report-list-modal">
+              {listReports.map((report) => (
+                <div key={report.id} className="report-item">
+                  <div className="report-main">
+                    <div className="report-head-inline">
+                      <strong>{report.template}</strong>
+                      <em>{report.category ?? '运行报告'}</em>
+                    </div>
+                    <span>{report.eventTitle}</span>
+                    <em>{report.timestamp}</em>
+                  </div>
+                  <div className="report-actions">
+                    <button
+                      type="button"
+                      className="detail-btn"
+                      onClick={() => openPreview(report, reportScope)}
+                    >
+                      <Eye size={13} />
+                      查看
+                    </button>
+                    <button type="button" className="detail-btn" onClick={() => downloadReport(report)}>
+                      <Download size={13} />
+                      下载
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )
+        : null}
+
+      {previewReport && canPortal
+        ? createPortal(
+        <div className="alert-modal-mask report-global-mask" onClick={() => setPreviewReport(null)}>
+          <div className="alert-modal report-global-modal" onClick={(event) => event.stopPropagation()}>
             <div className="alert-modal-head">
               <strong>{previewReport.template} - 报告查看与编辑</strong>
-              <button type="button" className="close-btn" onClick={() => setPreviewReportId('')}>
+              <button type="button" className="close-btn" onClick={() => setPreviewReport(null)}>
                 关闭
               </button>
             </div>
@@ -194,7 +298,7 @@ function ReportGeneratorDock({
             </div>
 
             <div className="report-editor-actions">
-              <button type="button" className="primary-btn" onClick={saveDraft}>
+              <button type="button" className="primary-btn" onClick={savePreview}>
                 <Save size={14} />
                 保存修改
               </button>
@@ -208,8 +312,10 @@ function ReportGeneratorDock({
               </button>
             </div>
           </div>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+      )
+        : null}
     </>
   )
 }
