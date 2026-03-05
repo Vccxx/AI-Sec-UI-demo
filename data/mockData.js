@@ -4,13 +4,46 @@ export const noiseReduction = {
   rate: '99.3%',
 }
 
+export const aiEfficiencyStages = [
+  { level: '规则过滤', before: 12403, after: 1680, rate: '86.5%' },
+  { level: '语义分析模型过滤', before: 1680, after: 312, rate: '81.4%' },
+  { level: '大模型过滤', before: 312, after: 86, rate: '72.4%' },
+]
+
 export const attackClassStats = [
-  { category: 'SQL注入', count: 31, color: '#22d3ee' },
-  { category: '自动化扫描', count: 27, color: '#38bdf8' },
-  { category: '异常流量', count: 24, color: '#0ea5e9' },
-  { category: '暴力破解', count: 18, color: '#fb923c' },
-  { category: '横向移动', count: 9, color: '#f97316' },
-  { category: '病毒木马', count: 7, color: '#ef4444' },
+  { category: 'SQL注入', count: 31, color: '#2f7df6' },
+  { category: '自动化扫描', count: 27, color: '#4b93ff' },
+  { category: '异常流量', count: 24, color: '#6ea9ff' },
+  { category: '暴力破解', count: 18, color: '#8bbcff' },
+  { category: '横向移动', count: 9, color: '#d97706' },
+  { category: '病毒木马', count: 7, color: '#dc2626' },
+]
+
+export const attackTrend24h = [
+  { hour: '00:00', count: 6 },
+  { hour: '01:00', count: 5 },
+  { hour: '02:00', count: 4 },
+  { hour: '03:00', count: 4 },
+  { hour: '04:00', count: 5 },
+  { hour: '05:00', count: 7 },
+  { hour: '06:00', count: 9 },
+  { hour: '07:00', count: 11 },
+  { hour: '08:00', count: 15 },
+  { hour: '09:00', count: 22 },
+  { hour: '10:00', count: 26 },
+  { hour: '11:00', count: 24 },
+  { hour: '12:00', count: 20 },
+  { hour: '13:00', count: 19 },
+  { hour: '14:00', count: 17 },
+  { hour: '15:00', count: 21 },
+  { hour: '16:00', count: 28 },
+  { hour: '17:00', count: 31 },
+  { hour: '18:00', count: 29 },
+  { hour: '19:00', count: 25 },
+  { hour: '20:00', count: 21 },
+  { hour: '21:00', count: 16 },
+  { hour: '22:00', count: 12 },
+  { hour: '23:00', count: 9 },
 ]
 
 export const defaultTemplates = [
@@ -34,6 +67,15 @@ export const mockEvents = [
     attackResult: '企图（高风险）',
     summary: '登录接口参数存在联合查询特征，疑似绕过WAF策略。',
     relatedSources: [
+      {
+        key: 'asset_map',
+        name: '资产安全测绘',
+        status: '交易主机A暴露443与8443外联入口，资产指纹匹配高价值业务系统。',
+        alerts: [
+          'asset=交易主机A exposure=internet edge_port=443,8443 owner=电力交易中心',
+          'fingerprint=SpringBoot+Nginx cms=none weak_surface=login endpoint /auth/login',
+        ],
+      },
       {
         key: 'waf',
         name: 'WAF 日志',
@@ -72,7 +114,7 @@ export const mockEvents = [
         zone: '生产区-交易前置',
         risk: '高危',
         alertCount: 14,
-        links: ['waf', 'edr', 'intel'],
+        links: ['asset_map', 'waf', 'edr', 'intel'],
       },
       {
         id: 'srv-grid-b',
@@ -83,7 +125,7 @@ export const mockEvents = [
         zone: '生产区-结算域',
         risk: '中危',
         alertCount: 6,
-        links: ['waf', 'intel'],
+        links: ['asset_map', 'waf', 'intel'],
       },
       {
         id: 'srv-grid-c',
@@ -94,7 +136,7 @@ export const mockEvents = [
         zone: '生产区-行情域',
         risk: '中危',
         alertCount: 4,
-        links: ['waf', 'edr'],
+        links: ['asset_map', 'waf', 'edr'],
       },
     ],
     rawTraffic: [
@@ -150,7 +192,61 @@ export const mockEvents = [
       '响应码研判：同源请求响应码由 404 转 200，攻击者可能已定位有效注入点。',
       '结论与建议：判定为高价值手工渗透，建议立即封禁源 IP、启用参数化校验并开展全流量溯源。',
     ],
-    actions: ['一键封禁源IP', '启用SQL注入防护策略', '下发主机加固基线'],
+    reasoningEvidenceLinks: [
+      ['E-01', 'E-02'],
+      ['E-02'],
+      ['E-03', 'E-04'],
+      ['E-02', 'E-05'],
+      ['E-01', 'E-03', 'E-04', 'E-05'],
+    ],
+    authenticityEvidence: [
+      {
+        id: 'E-01',
+        sourceKey: 'asset_map',
+        name: '资产安全测绘',
+        summary: '交易主机A为高价值外联资产，登录接口暴露于公网边界。',
+        raw: 'asset=交易主机A exposure=internet edge_port=443,8443 fingerprint=SpringBoot+Nginx',
+        riskSignal: '高价值暴露面',
+        stepIndex: 0,
+      },
+      {
+        id: 'E-02',
+        sourceKey: 'waf',
+        name: 'WAF 日志',
+        summary: '30分钟命中SQL注入规则24次，且同源响应码出现404->200变化。',
+        raw: 'rule=SQLI-942150 payload=and%201=1 status=200',
+        riskSignal: '规则持续命中 + 可利用信号',
+        stepIndex: 1,
+      },
+      {
+        id: 'E-03',
+        sourceKey: 'edr',
+        name: 'EDR 记录',
+        summary: '交易主机出现异常数据库调用链，疑似已触发注入执行路径。',
+        raw: 'process=java child=sqlcmd.exe commandline=select * from user where id=1 or 1=1',
+        riskSignal: '主机侧执行痕迹',
+        stepIndex: 2,
+      },
+      {
+        id: 'E-04',
+        sourceKey: 'intel',
+        name: '威胁情报',
+        summary: '源IP命中黑产基础设施画像，关联凭证窃取活动。',
+        raw: 'IOC hit: 183.62.14.97 confidence=0.92 tagged=credential theft infra',
+        riskSignal: '恶意IP高置信命中',
+        stepIndex: 2,
+      },
+      {
+        id: 'E-05',
+        sourceKey: 'waf',
+        name: 'WAF响应序列',
+        summary: '攻击请求响应码由阻断态转为可达态，真实性显著提升。',
+        raw: '09:11:04 status=404 -> 09:11:37 status=200 same_src=183.62.14.97',
+        riskSignal: '攻击成功窗口逼近',
+        stepIndex: 3,
+      },
+    ],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
   {
     id: 'evt-flow-spot',
@@ -166,6 +262,15 @@ export const mockEvents = [
     attackResult: '失败（拦截中）',
     summary: '撮合入口流量短时抬升 12 倍，连接分布呈突增离散模式。',
     relatedSources: [
+      {
+        key: 'asset_map',
+        name: '资产安全测绘',
+        status: '撮合节点B与行情转发节点E同时暴露公网访问入口，流量突增资产位于关键业务链。',
+        alerts: [
+          'asset=撮合节点B zone=现货交易区 edge_service=https://spot.example.com',
+          'asset=行情转发节点E exposure=public relay_port=9443 dependency=撮合入口',
+        ],
+      },
       {
         key: 'traffic',
         name: '流量分析',
@@ -204,7 +309,7 @@ export const mockEvents = [
         zone: '现货交易区',
         risk: '高危',
         alertCount: 18,
-        links: ['traffic', 'waf', 'siem'],
+        links: ['asset_map', 'traffic', 'waf', 'siem'],
       },
       {
         id: 'srv-spot-b',
@@ -215,7 +320,7 @@ export const mockEvents = [
         zone: '行情交换区',
         risk: '中危',
         alertCount: 7,
-        links: ['traffic', 'siem'],
+        links: ['asset_map', 'traffic', 'siem'],
       },
       {
         id: 'srv-spot-c',
@@ -226,7 +331,7 @@ export const mockEvents = [
         zone: '风控分析区',
         risk: '中危',
         alertCount: 5,
-        links: ['traffic', 'waf'],
+        links: ['asset_map', 'traffic', 'waf'],
       },
     ],
     rawTraffic: [
@@ -282,7 +387,55 @@ export const mockEvents = [
       '攻击结果判定：当前业务节点可用性下降但未失陷，定性为异常流量攻击（失败/拦截中）。',
       '结论与建议：建议立即切换流量清洗，隔离受害入口并限速可疑网段。',
     ],
-    actions: ['隔离受害主机', '一键切换流量清洗', '限速可疑网段'],
+    reasoningEvidenceLinks: [['E-01', 'E-02'], ['E-03'], ['E-04', 'E-05'], ['E-02', 'E-04'], ['E-01', 'E-05']],
+    authenticityEvidence: [
+      {
+        id: 'E-01',
+        sourceKey: 'asset_map',
+        name: '资产安全测绘',
+        summary: '撮合入口与行情转发节点同属关键链路，均为公网可达面。',
+        raw: 'asset=撮合节点B exposure=public; asset=行情转发节点E relay_port=9443',
+        riskSignal: '关键链路暴露',
+        stepIndex: 0,
+      },
+      {
+        id: 'E-02',
+        sourceKey: 'traffic',
+        name: '流量分析',
+        summary: 'SYN峰值2200/s，连接失败率与重传率显著异常。',
+        raw: 'syn_rate=2200/s threshold=300/s tcp_retrans=38% conn_fail=64%',
+        riskSignal: '可用性攻击特征',
+        stepIndex: 0,
+      },
+      {
+        id: 'E-03',
+        sourceKey: 'waf',
+        name: 'WAF 日志',
+        summary: '异常UA masscan/1.3 持续命中并伴随路径遍历。',
+        raw: 'ua=masscan/1.3 uri=/api/order/book status=503 path sweep /admin,/test,/xxx',
+        riskSignal: '自动化扫描行为',
+        stepIndex: 1,
+      },
+      {
+        id: 'E-04',
+        sourceKey: 'siem',
+        name: 'SIEM 事件',
+        summary: '可用性风险联动告警成立，置信度0.88。',
+        raw: 'Correlation#AVAIL-441 rule=DoS_burst_5min confidence=0.88',
+        riskSignal: '跨设备关联成立',
+        stepIndex: 2,
+      },
+      {
+        id: 'E-05',
+        sourceKey: 'traffic',
+        name: '流量清洗建议依据',
+        summary: '受害入口连接离散突增，需切流并限速压制攻击面。',
+        raw: 'burst pattern over 10min target_subnets=3 availability drop observed',
+        riskSignal: '处置窗口明确',
+        stepIndex: 4,
+      },
+    ],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
   {
     id: 'evt-bruteforce-gw',
@@ -298,6 +451,15 @@ export const mockEvents = [
     attackResult: '企图（逼近成功）',
     summary: 'VPN 认证失败事件密集出现，命中弱口令字典行为模型。',
     relatedSources: [
+      {
+        key: 'asset_map',
+        name: '资产安全测绘',
+        status: '边界网关C与VPN认证服务G同时暴露认证入口，账号体系共享风险高。',
+        alerts: [
+          'asset=边界网关C service=/vpn/login exposure=internet',
+          'asset=VPN认证服务G shared_account_domain=ops/admin policy=MFA optional',
+        ],
+      },
       {
         key: 'iam',
         name: '身份审计',
@@ -345,7 +507,7 @@ export const mockEvents = [
         zone: '边界接入区',
         risk: '高危',
         alertCount: 21,
-        links: ['iam', 'edr', 'intel', 'siem'],
+        links: ['asset_map', 'iam', 'edr', 'intel', 'siem'],
       },
       {
         id: 'srv-gw-b',
@@ -356,7 +518,7 @@ export const mockEvents = [
         zone: '认证服务区',
         risk: '中危',
         alertCount: 10,
-        links: ['iam', 'siem'],
+        links: ['asset_map', 'iam', 'siem'],
       },
       {
         id: 'srv-gw-c',
@@ -367,7 +529,7 @@ export const mockEvents = [
         zone: '日志审计区',
         risk: '中危',
         alertCount: 6,
-        links: ['iam', 'intel'],
+        links: ['asset_map', 'iam', 'intel'],
       },
     ],
     rawTraffic: [
@@ -423,7 +585,55 @@ export const mockEvents = [
       '风险等级判断：攻击处于高频持续阶段，存在短时间内撞库成功风险。',
       '结论与建议：执行账号冻结、封禁攻击网段，强制开启 MFA 并回溯近30天访问历史。',
     ],
-    actions: ['冻结高风险账号', '封禁攻击网段', '强制开启MFA校验'],
+    reasoningEvidenceLinks: [['E-01', 'E-02'], ['E-03'], ['E-04', 'E-05'], ['E-02', 'E-04'], ['E-01', 'E-05']],
+    authenticityEvidence: [
+      {
+        id: 'E-01',
+        sourceKey: 'asset_map',
+        name: '资产安全测绘',
+        summary: '边界网关与VPN认证服务暴露在公网且共享账号域。',
+        raw: 'gateway=/vpn/login exposure=internet shared_account_domain=ops/admin',
+        riskSignal: '高敏认证面暴露',
+        stepIndex: 0,
+      },
+      {
+        id: 'E-02',
+        sourceKey: 'iam',
+        name: '身份审计',
+        summary: '3分钟失败87次，账号喷洒特征显著。',
+        raw: 'user=admin fail_count=87/3min spray pattern interval=2.1s',
+        riskSignal: '口令爆破强信号',
+        stepIndex: 0,
+      },
+      {
+        id: 'E-03',
+        sourceKey: 'intel',
+        name: '威胁情报',
+        summary: '源IP命中僵尸网络节点，恶意评分89。',
+        raw: '112.74.33.218 botnet cluster CN-east-17 malicious_score=89',
+        riskSignal: '恶意来源确认',
+        stepIndex: 1,
+      },
+      {
+        id: 'E-04',
+        sourceKey: 'siem',
+        name: 'SIEM 事件',
+        summary: '跨系统账号碰撞行为成立，置信度0.9。',
+        raw: 'rule=account_spray_chain result=positive confidence=0.9',
+        riskSignal: '跨系统联动成立',
+        stepIndex: 2,
+      },
+      {
+        id: 'E-05',
+        sourceKey: 'edr',
+        name: 'EDR 记录',
+        summary: '网关认证进程触发异常重试，逼近策略阈值。',
+        raw: 'gatewayd abnormal auth retry exceeded policy threshold',
+        riskSignal: '主机侧持续攻击痕迹',
+        stepIndex: 3,
+      },
+    ],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
   {
     id: 'evt-lateral-oms',
@@ -439,6 +649,15 @@ export const mockEvents = [
     attackResult: '成功（疑似失陷链路）',
     summary: '内网出现异常远程执行链路，跨网段访问行为偏离基线。',
     relatedSources: [
+      {
+        key: 'asset_map',
+        name: '资产安全测绘',
+        status: '调度控制D对工控采集区与应用服务区存在高权限横向可达路径。',
+        alerts: [
+          'asset=调度控制D trust_path=SMB/SSH/RDP lateral_scope=3 subnets',
+          'privilege_profile=domain admin equivalent east-west policy=weak segmentation',
+        ],
+      },
       {
         key: 'edr',
         name: 'EDR 记录',
@@ -477,7 +696,7 @@ export const mockEvents = [
         zone: '调度核心区',
         risk: '紧急',
         alertCount: 16,
-        links: ['edr', 'traffic', 'siem'],
+        links: ['asset_map', 'edr', 'traffic', 'siem'],
       },
       {
         id: 'srv-lat-b',
@@ -488,7 +707,7 @@ export const mockEvents = [
         zone: '工控采集区',
         risk: '高危',
         alertCount: 11,
-        links: ['traffic', 'siem'],
+        links: ['asset_map', 'traffic', 'siem'],
       },
       {
         id: 'srv-lat-c',
@@ -499,7 +718,7 @@ export const mockEvents = [
         zone: '应用服务区',
         risk: '高危',
         alertCount: 9,
-        links: ['edr', 'traffic'],
+        links: ['asset_map', 'edr', 'traffic'],
       },
     ],
     rawTraffic: [
@@ -555,7 +774,46 @@ export const mockEvents = [
       '攻击结果判定：部分横向连接建立成功，目标资产存在失陷风险。',
       '结论与建议：立即阻断东西向访问，隔离可疑主机并启动应急响应剧本。',
     ],
-    actions: ['阻断东西向访问', '隔离可疑内网主机', '触发应急响应剧本'],
+    reasoningEvidenceLinks: [['E-01', 'E-02'], ['E-03'], ['E-04'], ['E-02', 'E-03'], ['E-01', 'E-04']],
+    authenticityEvidence: [
+      {
+        id: 'E-01',
+        sourceKey: 'asset_map',
+        name: '资产安全测绘',
+        summary: '调度控制D具备跨网段高权限访问路径，横向移动条件成立。',
+        raw: 'trust_path=SMB/SSH/RDP lateral_scope=3 subnets segmentation=weak',
+        riskSignal: '横向扩散基础存在',
+        stepIndex: 0,
+      },
+      {
+        id: 'E-02',
+        sourceKey: 'traffic',
+        name: '流量分析',
+        summary: '15分钟内SMB会话激增460%，并伴随RDP/SSH尝试。',
+        raw: 'east-west smb sessions +460% rdp attempts=42 ssh attempts=33',
+        riskSignal: '东西向异常显著',
+        stepIndex: 0,
+      },
+      {
+        id: 'E-03',
+        sourceKey: 'edr',
+        name: 'EDR 记录',
+        summary: '检测到PsExec调用链与远程命令执行。',
+        raw: 'psexec.exe spawned by services.exe command whoami; netstat executed remotely',
+        riskSignal: '主机侧横移证据',
+        stepIndex: 1,
+      },
+      {
+        id: 'E-04',
+        sourceKey: 'siem',
+        name: 'SIEM 事件',
+        summary: '攻击链图谱重建为探测->凭证尝试->横向访问。',
+        raw: 'attack_chain=discovery->credential access->lateral movement impact_assets=3',
+        riskSignal: '攻击链闭环成立',
+        stepIndex: 2,
+      },
+    ],
+    actions: ['一键封禁攻击IP', '柔性灰度处置'],
   },
 ]
 

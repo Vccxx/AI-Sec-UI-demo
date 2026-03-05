@@ -6,11 +6,11 @@ import ReasoningLog from './components/ReasoningLog'
 import ReportCenter from './components/ReportCenter'
 import ActionPanel from './components/ActionPanel'
 import {
+  aiEfficiencyStages,
   aiNoiseEvents,
-  attackClassStats,
+  attackTrend24h,
   defaultTemplates,
   mockEvents,
-  noiseReduction,
   sampleReports,
 } from './data/mockData'
 import './App.css'
@@ -87,6 +87,15 @@ function App() {
       summary: noise.reason,
       relatedSources: [
         {
+          key: 'asset_map',
+          name: '资产安全测绘',
+          status: '告警聚合节点为安全域内部资产，外联面受控，业务暴露面低。',
+          alerts: [
+            'asset=告警聚合节点 zone=安全运营区 exposure=internal only',
+            'edge_service=none trusted_source=监控采集链路',
+          ],
+        },
+        {
           key: 'waf',
           name: '规则命中分析',
           status: '仅命中低置信规则，缺少多设备侧证据',
@@ -121,7 +130,7 @@ function App() {
           zone: '安全运营区',
           risk: pending ? '中危' : '低危',
           alertCount: 3,
-          links: ['waf', 'siem'],
+          links: ['asset_map', 'waf', 'siem'],
         },
         {
           id: `${noise.id}-srv-2`,
@@ -132,7 +141,7 @@ function App() {
           zone: 'AI引擎区',
           risk: '低危',
           alertCount: 2,
-          links: ['siem', 'intel'],
+          links: ['asset_map', 'siem', 'intel'],
         },
       ],
       rawTraffic: [
@@ -166,9 +175,46 @@ function App() {
         `步骤4-业务上下文：来源为「${noise.source}」，结合报备/运维场景判定无实质危害。`,
         `步骤5-降噪结论：${pending ? '标记为待复核误报，保留观察。' : '归档为无害误报并下调告警优先级。'}`,
       ],
-      actions: pending
-        ? ['提交人工复核', '补充资产侧证据', '暂缓自动处置']
-        : ['加入误报白名单', '同步规则优化库', '关闭重复告警推送'],
+      reasoningEvidenceLinks: [['E-01', 'E-02'], ['E-03'], ['E-04'], ['E-01'], ['E-02', 'E-04']],
+      authenticityEvidence: [
+        {
+          id: 'E-01',
+          sourceKey: 'asset_map',
+          name: '资产安全测绘',
+          summary: '该告警来源于内网受控采集链路，未见公网攻击入口暴露。',
+          raw: 'zone=安全运营区 exposure=internal only trusted_source=monitoring pipeline',
+          riskSignal: '低暴露面',
+          stepIndex: 0,
+        },
+        {
+          id: 'E-02',
+          sourceKey: 'waf',
+          name: '规则命中分析',
+          summary: '仅单条低置信规则命中，缺少可利用链路证据。',
+          raw: `noise_tag=${noise.tag} confidence=${noise.confidence} rule_hit=1 response_evidence=none`,
+          riskSignal: '弱命中',
+          stepIndex: 0,
+        },
+        {
+          id: 'E-03',
+          sourceKey: 'siem',
+          name: '跨设备关联结果',
+          summary: '未形成同源攻击链，关联设备数量不足。',
+          raw: 'correlation_result=negative linked_devices<2 attack_path_rebuild=failed',
+          riskSignal: '关联不成立',
+          stepIndex: 1,
+        },
+        {
+          id: 'E-04',
+          sourceKey: 'intel',
+          name: '威胁情报核验',
+          summary: '源地址未命中高危IOC库，恶意评分较低。',
+          raw: `ioc_match=0 malicious_score<20 source=${noise.source}`,
+          riskSignal: '情报侧低风险',
+          stepIndex: 2,
+        },
+      ],
+      actions: ['一键封禁攻击IP', '柔性灰度处置'],
     }
   }, [selectedItem, selectedAttackEvent, selectedNoiseEvent])
 
@@ -357,23 +403,8 @@ function App() {
   return (
     <div className="app-shell">
       <header className="panel header-panel">
-        <HeaderStats noiseReduction={noiseReduction} attackClassStats={attackClassStats} />
+        <HeaderStats aiEfficiencyStages={aiEfficiencyStages} attackTrend24h={attackTrend24h} />
       </header>
-
-      <div className="workspace-tabs">
-        {views.map((view) => (
-          <div key={view.id} className={`workspace-tab ${activeViewId === view.id ? 'active' : ''}`}>
-            <button type="button" onClick={() => setActiveViewId(view.id)}>
-              {view.title}
-            </button>
-            {view.id !== 'main' ? (
-              <button type="button" className="close" onClick={() => closeView(view.id)}>
-                x
-              </button>
-            ) : null}
-          </div>
-        ))}
-      </div>
 
       <main className="body-grid">
         <aside className="panel left-panel">
@@ -383,6 +414,10 @@ function App() {
             selectedItem={selectedItem}
             onSelectAttack={(id) => setSelectedItemForView(activeViewId, { type: 'attack', id })}
             onSelectNoise={(id) => setSelectedItemForView(activeViewId, { type: 'noise', id })}
+            views={views}
+            activeViewId={activeViewId}
+            onSwitchView={setActiveViewId}
+            onCloseView={closeView}
           />
         </aside>
 
@@ -391,7 +426,10 @@ function App() {
             <CorrelationAnalysis selectedEvent={selectedEvent} />
           </div>
           <div className="panel center-bottom">
-            <ReasoningLog selectedEvent={selectedEvent} onFilterCommand={handleFilterCommand} />
+            <ReasoningLog
+              selectedEvent={selectedEvent}
+              onFilterCommand={handleFilterCommand}
+            />
           </div>
         </section>
 

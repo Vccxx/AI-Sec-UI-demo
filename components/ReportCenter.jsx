@@ -100,8 +100,15 @@ function ReportCenter({
         </select>
 
         <div className="template-source-tip">
-          <span>数据来源</span>
-          <strong>{selectedTemplateMeta?.dataSource ?? '未配置'}</strong>
+          <span className="template-name-inline" title={selectedTemplateMeta?.name ?? '未配置模板'}>
+            模板：{selectedTemplateMeta?.name ?? '未配置模板'}
+          </span>
+          <strong
+            className="template-source-inline"
+            title={selectedTemplateMeta?.dataSource ?? '未配置'}
+          >
+            数据来源：{selectedTemplateMeta?.dataSource ?? '未配置'}
+          </strong>
         </div>
 
         {isCreatingTemplate ? (
@@ -135,10 +142,17 @@ function ReportCenter({
           reports.map((report) => (
             <div key={report.id} className="report-item">
               <div className="report-main">
-                <strong>{report.template}</strong>
+                <div className="report-head-inline">
+                  <strong title={report.template}>{report.template}</strong>
+                  <em
+                    className="report-source-inline"
+                    title={`数据来源：${report.templateDataSource ?? '未配置'}`}
+                  >
+                    数据来源：{report.templateDataSource ?? '未配置'}
+                  </em>
+                </div>
                 <span>{report.eventTitle}</span>
                 <em>{report.timestamp}</em>
-                <em>数据来源：{report.templateDataSource ?? '未配置'}</em>
               </div>
               <div className="report-actions">
                 <button type="button" className="detail-btn" onClick={() => openPreview(report)}>

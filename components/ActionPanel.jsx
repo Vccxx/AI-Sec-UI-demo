@@ -1,15 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlayCircle, Send, ShieldCheck } from 'lucide-react'
 
 function ActionPanel({ selectedEvent, onCompleteDisposal }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [workflow, setWorkflow] = useState(null)
+  const actionListRef = useRef(null)
 
-  const actionExamples = useMemo(
-    () => selectedEvent.actions.map((action) => `/${action}`),
-    [selectedEvent],
-  )
+  const inputPlaceholder = useMemo(() => {
+    return '输入 /处置操作名称、/confirm 或 /cancel'
+  }, [selectedEvent])
 
   const workflowTemplates = useMemo(
     () =>
@@ -33,15 +33,33 @@ function ActionPanel({ selectedEvent, onCompleteDisposal }) {
       {
         id: `boot-${selectedEvent.id}`,
         role: 'bot',
-        text: `可执行处置操作：${selectedEvent.actions.join('、')}。可点击下方操作，或输入 /处置操作名称。`,
+        text: `可执行处置操作：${selectedEvent.actions.join('、')}。`,
       },
       {
         id: `sample-${selectedEvent.id}`,
         role: 'bot',
-        text: `交互样例：输入 /${selectedEvent.actions[0]} -> 系统会逐步提示，并要求每一步人工确认。`,
+        text: `交互样例：输入 /${selectedEvent.actions[0]} 后，按提示执行 /confirm（或 /cancel）。`,
       },
     ])
   }, [selectedEvent])
+
+  useEffect(() => {
+    const node = actionListRef.current
+    if (!node) return
+
+    const raf = window.requestAnimationFrame(() => {
+      node.scrollTop = node.scrollHeight
+    })
+
+    return () => window.cancelAnimationFrame(raf)
+  }, [messages])
+
+  const getRoleMeta = (role) => {
+    if (role === 'user') return { label: '用户', className: 'user' }
+    if (role === 'bot-warning') return { label: '系统提示', className: 'warning' }
+    if (role === 'bot-success') return { label: '系统回执', className: 'success' }
+    return { label: 'AI', className: 'ai' }
+  }
 
   const startWorkflow = (action) => {
     const steps = workflowTemplates[action]
@@ -148,7 +166,7 @@ function ActionPanel({ selectedEvent, onCompleteDisposal }) {
 
   return (
     <div className="action-wrap">
-      <div className="panel-title">
+      <div className="panel-title conversation-header">
         <ShieldCheck size={16} />
         <span>处置场景</span>
       </div>
@@ -158,10 +176,11 @@ function ActionPanel({ selectedEvent, onCompleteDisposal }) {
         <span>{selectedEvent.title}</span>
       </div>
 
-      <div className="action-dialog-list">
+      <div ref={actionListRef} className="action-dialog-list chat-stream">
         {messages.map((msg) => (
-          <div key={msg.id} className={`action-dialog-item ${msg.role}`}>
-            {msg.text}
+          <div key={msg.id} className={`action-dialog-item chat-card ${getRoleMeta(msg.role).className}`}>
+            <div className="chat-role">{getRoleMeta(msg.role).label}</div>
+            <div className="chat-text">{msg.text}</div>
           </div>
         ))}
       </div>
@@ -169,25 +188,17 @@ function ActionPanel({ selectedEvent, onCompleteDisposal }) {
       <div className="action-quick-ops">
         {selectedEvent.actions.map((action) => (
           <button type="button" key={action} className="action-btn" onClick={() => startWorkflow(action)}>
-            <PlayCircle size={15} />
+            <PlayCircle size={13} />
             {action}
           </button>
         ))}
-
-        <div className="action-sample-list">
-          {actionExamples.map((cmd) => (
-            <button type="button" key={cmd} onClick={() => setInput(cmd)}>
-              {cmd}
-            </button>
-          ))}
-        </div>
       </div>
 
       <form className="action-input-form" onSubmit={handleSubmit}>
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="输入 /处置操作名称，或 /confirm、/cancel"
+          placeholder={inputPlaceholder}
         />
         <button type="submit" className="primary-btn">
           <Send size={14} />

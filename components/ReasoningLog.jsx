@@ -1,75 +1,90 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { GitBranch, MessageSquareMore, Send, Target, TerminalSquare } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronRight, Send, TerminalSquare } from 'lucide-react'
 
 function ReasoningLog({ selectedEvent, onFilterCommand }) {
-  const formattedSteps = useMemo(
-    () => selectedEvent.reasoningSteps.map((step, index) => `[步骤 ${index + 1}] ${step}`),
-    [selectedEvent],
-  )
-  const fullText = useMemo(() => formattedSteps.join('\n\n'), [formattedSteps])
-  const stepBoundaries = useMemo(() => {
-    const list = []
-    let total = 0
-    formattedSteps.forEach((step, index) => {
-      total += step.length
-      if (index < formattedSteps.length - 1) total += 2
-      list.push(total)
-    })
-    return list
-  }, [formattedSteps])
+  const evidenceById = useMemo(() => {
+    const entries = (selectedEvent.authenticityEvidence ?? []).map((item, index) => [
+      item.id ?? `E-${String(index + 1).padStart(2, '0')}`,
+      item,
+    ])
+    return Object.fromEntries(entries)
+  }, [selectedEvent])
 
-  const traceNodes = useMemo(
-    () => {
-      const stepCount = selectedEvent.reasoningSteps.length
-      const nodes = [{ id: 'src', label: `攻击源 ${selectedEvent.sourceIp}`, stepIndex: 0 }]
-
-      for (let i = 0; i < stepCount; i += 1) {
-        const source = selectedEvent.relatedSources[i % selectedEvent.relatedSources.length]
-        nodes.push({
-          id: `hop-${i + 1}`,
-          label: `第${i + 1}跳 ${source?.name ?? '关联设备'}`,
-          stepIndex: i,
-        })
-      }
-
-      nodes.push({
-        id: 'target',
-        label: `攻击目标 ${selectedEvent.target}`,
-        stepIndex: stepCount - 1,
-      })
-
-      return nodes.map((node, index) => {
-        const y = 10 + (index * 80) / Math.max(1, nodes.length - 1)
-        const x = index === 0 || index === nodes.length - 1 ? 50 : index % 2 === 0 ? 30 : 70
-        return { ...node, x, y }
-      })
-    },
-    [selectedEvent],
-  )
-
-  const stepEvidences = useMemo(
+  const reasoningItems = useMemo(
     () =>
       selectedEvent.reasoningSteps.map((step, index) => {
-        const source = selectedEvent.relatedSources[index % selectedEvent.relatedSources.length]
+        const rawText = typeof step === 'string' ? step : step?.text ?? ''
+        const linkedIds = selectedEvent.reasoningEvidenceLinks?.[index]
+        const fallbackId = (selectedEvent.authenticityEvidence ?? [])[index]?.id
+        const evidenceIds = Array.isArray(linkedIds)
+          ? linkedIds
+          : linkedIds
+            ? [linkedIds]
+            : fallbackId
+              ? [fallbackId]
+              : ['E-NA']
+
+        const evidenceTag = evidenceIds
+          .map((id) => {
+            const ref = evidenceById[id]
+            if (!ref) return id
+            return `${id}/${ref.name ?? ref.sourceName ?? '证据'}`
+          })
+          .join(', ')
+
         return {
-          id: `evidence-${index + 1}`,
-          title: `步骤 ${index + 1} 判定依据`,
-          basis: [
-            source?.status ?? '暂无设备状态',
-            source?.alerts?.[0] ?? '暂无原始证据片段',
-            source?.alerts?.[1] ?? '等待更多设备日志关联',
-          ],
-          conclusion: step,
+          stepIndex: index,
+          rawText,
+          evidenceIds,
+          evidenceTag,
         }
       }),
-    [selectedEvent],
+    [selectedEvent, evidenceById],
   )
 
-  const [displayText, setDisplayText] = useState('')
-  const [activeStepIndex, setActiveStepIndex] = useState(0)
-  const [evidenceModal, setEvidenceModal] = useState(null)
+  const finalAnalysis = useMemo(() => {
+    const topActions = (selectedEvent.actions ?? []).slice(0, 2).join('、')
+
+    const attackedHosts = (selectedEvent.relatedServers ?? [])
+      .map((server) => `${server.name}(${server.ip})`)
+      .join('、')
+
+    const trafficTimes = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.time))).sort()
+    const timeFeature =
+      trafficTimes.length > 0
+        ? `${trafficTimes[0]} 至 ${trafficTimes[trafficTimes.length - 1]} 持续出现同源访问，窗口为「${selectedEvent.timeWindow}」`
+        : `在「${selectedEvent.timeWindow}」窗口内出现连续攻击行为`
+
+    const methods = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.method))).filter(Boolean)
+    const paths = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.path))).filter(Boolean)
+    const statusCodes = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.status))).filter(Boolean)
+
+    const methodFeature = methods.length > 0 ? methods.join(' / ') : '多种协议行为混合'
+    const pathFeature = paths.length > 0 ? paths.slice(0, 3).join('、') : '关键业务路径'
+    const statusFeature = statusCodes.length > 0 ? statusCodes.join(' -> ') : '状态码异常波动'
+
+    return [
+      `综合判定：本次告警属于「${selectedEvent.focusType}」场景，攻击结果为「${selectedEvent.attackResult}」，攻击源 ${selectedEvent.sourceIp} 对目标「${selectedEvent.target}」形成持续威胁。`,
+      `受攻击主机：${attackedHosts || selectedEvent.target}。`,
+      `攻击时间特征：${timeFeature}，呈现高频且阶段性增强的访问节奏。`,
+      `攻击手法特征：请求方式以 ${methodFeature} 为主，重点命中 ${pathFeature}，响应结果出现 ${statusFeature} 等可疑变化。`,
+      `处置建议：优先执行 ${topActions}，并结合主机侧日志与边界设备告警完成闭环复核。`,
+    ].join('\n')
+  }, [selectedEvent])
+
   const [question, setQuestion] = useState('')
   const [dialogues, setDialogues] = useState([])
+  const [expandAll, setExpandAll] = useState(false)
+  const [typedAnalysis, setTypedAnalysis] = useState('')
+  const [analysisTyping, setAnalysisTyping] = useState(false)
+  const dialogueListRef = useRef(null)
+
+  const getRoleMeta = (role) => {
+    if (role === 'user') return { label: '用户', className: 'user' }
+    if (role === 'bot-warning') return { label: '系统提示', className: 'warning' }
+    if (role === 'bot-success') return { label: '系统回执', className: 'success' }
+    return { label: 'AI', className: 'ai' }
+  }
 
   const commandOptions = [
     { cmd: '/ask', help: '追问当前告警分析' },
@@ -83,24 +98,6 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
     '/filter 系统A 系统B 所有IP被攻击情况',
   ]
 
-  const openEvidence = (node) => {
-    const stepIndex = Math.max(0, node.stepIndex)
-    const detail = stepEvidences[stepIndex]
-    if (!detail) return
-
-    setEvidenceModal({
-      title: `${node.label} - 取证依据`,
-      fields: [
-        { label: '路径节点', value: node.label },
-        { label: '对应步骤', value: `步骤 ${stepIndex + 1}` },
-        { label: '攻击结果', value: selectedEvent.attackResult },
-        { label: '当前事件', value: selectedEvent.title },
-      ],
-      rawText: detail.basis.join('\n'),
-      conclusion: detail.conclusion,
-    })
-  }
-
   const getFollowupReply = (query) => {
     const normalized = query.toLowerCase()
 
@@ -111,37 +108,43 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
       return `本事件攻击结果判定为：${selectedEvent.attackResult}。建议结合响应码变化与主机侧日志进一步确认是否形成实际入侵。`
     }
     if (query.includes('处置') || query.includes('怎么做') || query.includes('建议')) {
-      return `优先执行：${selectedEvent.actions[0]}。随后按剧本完成 ${selectedEvent.actions[1]} 与 ${selectedEvent.actions[2]}，并同步提交报告中心归档。`
+      return `优先执行：${selectedEvent.actions[0]}。建议结合 ${selectedEvent.actions[1]} 完成后续闭环，并同步提交报告中心归档。`
     }
     return `已结合“${selectedEvent.focusType}”场景复核，该事件时间特征为“${selectedEvent.timeWindow}”。如需我继续深挖，请追问“攻击结果判定依据”或“全流量排查范围”。`
   }
 
   useEffect(() => {
+    setDialogues([])
+    setExpandAll(false)
+  }, [selectedEvent])
+
+  useEffect(() => {
     let index = 0
-    setDisplayText('')
-    setActiveStepIndex(0)
-    setDialogues([
-      {
-        id: `bot-init-${selectedEvent.id}`,
-        role: 'bot',
-        text: `可针对当前告警追问：攻击结果、关联IP排查、处置优先级。`,
-      },
-    ])
+    setTypedAnalysis('')
+    setAnalysisTyping(true)
 
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
       index += 1
-      setDisplayText(fullText.slice(0, index))
-
-      const currentStep = stepBoundaries.findIndex((boundary) => index <= boundary)
-      setActiveStepIndex(currentStep === -1 ? stepBoundaries.length - 1 : currentStep)
-
-      if (index >= fullText.length) {
-        clearInterval(timer)
+      setTypedAnalysis(finalAnalysis.slice(0, index))
+      if (index >= finalAnalysis.length) {
+        window.clearInterval(timer)
+        setAnalysisTyping(false)
       }
-    }, 18)
+    }, 12)
 
-    return () => clearInterval(timer)
-  }, [fullText, selectedEvent, stepBoundaries])
+    return () => window.clearInterval(timer)
+  }, [finalAnalysis])
+
+  useEffect(() => {
+    const node = dialogueListRef.current
+    if (!node) return
+
+    const raf = window.requestAnimationFrame(() => {
+      node.scrollTop = node.scrollHeight
+    })
+
+    return () => window.cancelAnimationFrame(raf)
+  }, [dialogues, reasoningItems])
 
   const handleAsk = (event) => {
     event.preventDefault()
@@ -178,110 +181,68 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
 
   return (
     <div className="reasoning-wrap">
-      <div className="panel-title">
-        <TerminalSquare size={16} />
-        <span>AI 推理实录</span>
-      </div>
-
-      <div className="reasoning-main-split">
-        <div className="terminal-box">
-          <pre>{displayText}</pre>
-          <span className="cursor">|</span>
+      <div className="reasoning-dialog-box">
+        <div className="conversation-header">
+          <TerminalSquare size={16} />
+          <span>告警深入分析</span>
         </div>
 
-        <div className="attack-trace-panel">
-          <div className="trace-title">
-            <GitBranch size={14} />
-            <span>攻击路径取证分析</span>
-          </div>
-
-          <div className="trace-topology-board">
-            <svg className="trace-line-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
-              {traceNodes.slice(0, -1).map((node, index) => {
-                const next = traceNodes[index + 1]
-                return (
-                  <line
-                    key={`trace-link-${node.id}`}
-                    x1={node.x}
-                    y1={node.y}
-                    x2={next.x}
-                    y2={next.y}
-                    className={`trace-link ${index <= activeStepIndex ? 'active' : ''}`}
-                  />
-                )
-              })}
-            </svg>
-
-            {traceNodes.map((node) => (
-              <div
-                key={node.id}
-                className={`trace-node ${node.stepIndex <= activeStepIndex ? 'active' : ''}`}
-                style={{ left: `${node.x}%`, top: `${node.y}%` }}
+        <div ref={dialogueListRef} className="dialogue-list combined chat-stream">
+          <div className="dialogue-item chat-card ai reasoning-block">
+            <div className="chat-role">AI</div>
+            <div className="reasoning-controls">
+              <button
+                type="button"
+                className="thinking-toggle"
+                onClick={() => setExpandAll((prev) => !prev)}
+                aria-expanded={expandAll}
               >
-                <Target size={12} />
-                <span className="trace-node-label">{node.label}</span>
-                <div className="node-evidence-pop">
-                  <button type="button" onClick={() => openEvidence(node)}>
-                    取证依据
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {evidenceModal ? (
-        <div className="alert-modal-mask" onClick={() => setEvidenceModal(null)}>
-          <div className="alert-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="alert-modal-head">
-              <strong>{evidenceModal.title}</strong>
-              <button type="button" className="close-btn" onClick={() => setEvidenceModal(null)}>
-                关闭
+                <ChevronRight size={13} className={`thinking-chevron ${expandAll ? 'expanded' : ''}`} />
+                <span>AI 思考过程</span>
+                <em>{expandAll ? `已展开 ${reasoningItems.length} 步 · 收起` : `共 ${reasoningItems.length} 步 · 展开`}</em>
               </button>
             </div>
 
-            <div className="alert-meta-grid">
-              {evidenceModal.fields.map((field) => (
-                <div key={field.label} className="alert-meta-item">
-                  <span>{field.label}</span>
-                  <strong>{field.value}</strong>
-                </div>
-              ))}
-            </div>
+            {!expandAll ? (
+              <p className="thinking-collapsed-tip">已生成 {reasoningItems.length} 条推理步骤，点击展开查看完整思考过程。</p>
+            ) : (
+              <div className="thinking-expanded-body">
+                {reasoningItems.map((item) => (
+                  <div key={`reasoning-${item.stepIndex}`} className="reasoning-step-item">
+                    <div className="reasoning-line-head">
+                      <strong className="reasoning-line-label">步骤 {item.stepIndex + 1}</strong>
+                      <span className="reasoning-line-evidence">依据 {item.evidenceIds.join(', ')}</span>
+                    </div>
 
-            <div className="alert-raw-block">
-              <div className="raw-head">取证原文</div>
-              <pre>{evidenceModal.rawText}</pre>
-            </div>
+                    <p className="reasoning-step-text">{item.rawText}</p>
+                    <div className="reasoning-step-link">依据：{item.evidenceTag}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <div className="alert-raw-block">
-              <div className="raw-head">判定结论</div>
-              <pre>{evidenceModal.conclusion}</pre>
+            <div className="analysis-result-block">
+              <span>分析结果</span>
+              <p>
+                {typedAnalysis}
+                {analysisTyping ? <i className="cursor">|</i> : null}
+              </p>
             </div>
           </div>
-        </div>
-      ) : null}
 
-      <div className="followup-panel">
-        <div className="followup-title">
-          <MessageSquareMore size={14} />
-          <span>告警追问</span>
-        </div>
-
-        <div className="dialogue-list">
           {dialogues.map((item) => (
-            <div key={item.id} className={`dialogue-item ${item.role}`}>
-              {item.text}
+            <div key={item.id} className={`dialogue-item chat-card ${getRoleMeta(item.role).className}`}>
+              <div className="chat-role">{getRoleMeta(item.role).label}</div>
+              <div className="chat-text">{item.text}</div>
             </div>
           ))}
         </div>
 
-        <form className="followup-form" onSubmit={handleAsk}>
+        <form className="followup-form combined" onSubmit={handleAsk}>
           <input
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
-            placeholder="输入 / 触发命令：/ask 或 /filter"
+            placeholder="提示：可直接输入问题，或使用 /ask 深挖判定依据，使用 /filter 快速筛选系统/IP 事件"
           />
           <button type="submit">
             <Send size={14} />
@@ -290,7 +251,7 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
         </form>
 
         {showCommandMenu ? (
-          <div className="command-menu">
+          <div className="command-menu combined">
             {commandOptions.map((item) => (
               <button
                 type="button"

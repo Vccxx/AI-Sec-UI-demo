@@ -1,7 +1,17 @@
 import React, { useMemo, useState } from 'react'
 import { AlertTriangle, ChevronRight, Flame } from 'lucide-react'
 
-function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelectNoise }) {
+function EventQueue({
+  events,
+  noiseEvents,
+  selectedItem,
+  onSelectAttack,
+  onSelectNoise,
+  views,
+  activeViewId,
+  onSwitchView,
+  onCloseView,
+}) {
   const [activeTab, setActiveTab] = useState('attack')
   const [attackFilter, setAttackFilter] = useState('全部')
   const [noiseFilter, setNoiseFilter] = useState('全部')
@@ -59,9 +69,26 @@ function EventQueue({ events, noiseEvents, selectedItem, onSelectAttack, onSelec
 
   return (
     <div className="queue-wrap">
-      <div className="panel-title">
-        <Flame size={16} />
-        <span>安全事件队列</span>
+      <div className="queue-head">
+        <div className="panel-title">
+          <Flame size={16} />
+          <span>安全事件队列</span>
+        </div>
+
+        <div className="workspace-tabs compact">
+          {views.map((view) => (
+            <div key={view.id} className={`workspace-tab ${activeViewId === view.id ? 'active' : ''}`}>
+              <button type="button" onClick={() => onSwitchView(view.id)}>
+                {view.title}
+              </button>
+              {view.id !== 'main' ? (
+                <button type="button" className="close" onClick={() => onCloseView(view.id)}>
+                  x
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="queue-tabs">
