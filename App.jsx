@@ -493,7 +493,17 @@ function App() {
   return (
     <div className="app-shell">
       <header className="panel header-panel">
-        <HeaderStats aiEfficiencyStages={aiEfficiencyStages} attackTrend24h={attackTrend24h} />
+        <HeaderStats
+          aiEfficiencyStages={aiEfficiencyStages}
+          attackTrend24h={attackTrend24h}
+          templates={templates}
+          selectedTemplate={selectedTemplate}
+          onTemplateChange={setSelectedTemplate}
+          onCreateTemplate={handleCreateTemplate}
+          onGenerate={handleGenerateReport}
+          reports={reports}
+          onUpdateReport={handleUpdateReport}
+        />
       </header>
 
       <main className="body-grid">
@@ -527,15 +537,7 @@ function App() {
 
         <aside className="right-panel">
           <div className="panel right-top">
-            <ReportCenter
-              templates={templates}
-              selectedTemplate={selectedTemplate}
-              onTemplateChange={setSelectedTemplate}
-              onCreateTemplate={handleCreateTemplate}
-              onGenerate={handleGenerateReport}
-              reports={reports}
-              onUpdateReport={handleUpdateReport}
-            />
+            <ReportCenter selectedEvent={selectedEvent} />
           </div>
           <div className="panel right-bottom">
             <ActionPanel

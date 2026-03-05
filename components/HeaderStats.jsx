@@ -1,5 +1,6 @@
 import React from 'react'
 import { Activity, Sparkles } from 'lucide-react'
+import ReportGeneratorDock from './ReportGeneratorDock'
 import {
   Area,
   AreaChart,
@@ -36,7 +37,17 @@ function TrendTooltip({ active, payload, label }) {
   )
 }
 
-function HeaderStats({ aiEfficiencyStages, attackTrend24h }) {
+function HeaderStats({
+  aiEfficiencyStages,
+  attackTrend24h,
+  templates,
+  selectedTemplate,
+  onTemplateChange,
+  onCreateTemplate,
+  onGenerate,
+  reports,
+  onUpdateReport,
+}) {
   const totalAlerts24h = attackTrend24h.reduce((sum, item) => sum + item.count, 0)
   const peak = Math.max(...attackTrend24h.map((item) => item.count))
   const avg = Math.round(attackTrend24h.reduce((sum, item) => sum + item.count, 0) / attackTrend24h.length)
@@ -152,6 +163,16 @@ function HeaderStats({ aiEfficiencyStages, attackTrend24h }) {
                 <strong>{totalAlerts24h}</strong>
               </div>
             </div>
+
+            <ReportGeneratorDock
+              templates={templates}
+              selectedTemplate={selectedTemplate}
+              onTemplateChange={onTemplateChange}
+              onCreateTemplate={onCreateTemplate}
+              onGenerate={onGenerate}
+              reports={reports}
+              onUpdateReport={onUpdateReport}
+            />
           </div>
         </div>
       </div>
