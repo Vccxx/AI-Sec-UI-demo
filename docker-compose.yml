@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  ai-sec-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-4173}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
