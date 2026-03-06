@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { BellRing, Eye, Send, Siren, ShieldBan, ShieldCheck } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Eye, Send, Siren } from 'lucide-react'
 
 function ReportCenter({ selectedEvent }) {
   const sampleDirectiveOrders = [
@@ -53,7 +54,7 @@ function ReportCenter({ selectedEvent }) {
     },
   ]
 
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false)
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false)
   const [directiveType, setDirectiveType] = useState('全网联合处置通告')
   const [directiveScope, setDirectiveScope] = useState('全网单位')
   const [directivePriority, setDirectivePriority] = useState('高')
@@ -61,13 +62,16 @@ function ReportCenter({ selectedEvent }) {
   const [directiveBody, setDirectiveBody] = useState('')
   const [orders, setOrders] = useState(sampleDirectiveOrders)
   const [previewOrder, setPreviewOrder] = useState(null)
+  const canPortal = typeof window !== 'undefined' && typeof document !== 'undefined'
 
   const directiveCards = [
-    { type: '全网联合处置通告', icon: BellRing, tip: '发现威胁后同步通知各单位联动拦截。' },
-    { type: '重点单位协同拦截', icon: ShieldCheck, tip: '指定重点单位先行执行高优先策略。' },
-    { type: '关停系统指令', icon: ShieldBan, tip: '对高风险系统执行临时关停与流量切断。' },
-    { type: '应急升级通告', icon: Siren, tip: '触发升级响应，统一提升处置级别。' },
+    { type: '全网联合处置通告', tip: '发现威胁后同步通知各单位联动拦截。' },
+    { type: '重点单位协同拦截', tip: '指定重点单位先行执行高优先策略。' },
+    { type: '关停系统指令', tip: '对高风险系统执行临时关停与流量切断。' },
+    { type: '应急升级通告', tip: '触发升级响应，统一提升处置级别。' },
   ]
+
+  const selectedDirectiveCard = directiveCards.find((card) => card.type === directiveType)
 
   const buildDirectiveBody = (type, event, scope, target) => {
     const base = `事件「${event.title}」攻击源 ${event.sourceIp} 持续攻击 ${target}，结果判定为${event.attackResult}。`
@@ -95,7 +99,7 @@ function ReportCenter({ selectedEvent }) {
 
   const issueDirective = () => {
     if (!directiveBody.trim()) return
-    setIsCreatingOrder(false)
+    setShowCreateOrderModal(false)
     const id = `order-${Date.now()}`
     const timestamp = new Date().toLocaleTimeString('zh-CN', { hour12: false })
     const isShutdown = directiveType === '关停系统指令'
@@ -136,73 +140,24 @@ function ReportCenter({ selectedEvent }) {
         <div className="command-section command-main-only">
           <div className="command-section-head">
             <strong>处置指令下发</strong>
-            <button type="button" className="secondary-btn" onClick={() => setIsCreatingOrder((prev) => !prev)}>
-              {isCreatingOrder ? '收起指令编辑' : '新建处置指令'}
+            <button type="button" className="secondary-btn" onClick={() => setShowCreateOrderModal(true)}>
+              新建处置指令
             </button>
           </div>
 
-          <div className="directive-card-grid">
-            {directiveCards.map((card) => {
-              const Icon = card.icon
-              return (
-                <button
-                  type="button"
-                  key={card.type}
-                  className={`directive-card ${directiveType === card.type ? 'active' : ''}`}
-                  onClick={() => handleDirectiveType(card.type)}
-                >
-                  <div className="directive-card-head">
-                    <Icon size={14} />
-                    <strong>{card.type}</strong>
-                  </div>
-                  <span>{card.tip}</span>
-                </button>
-              )
-            })}
+          <div className="directive-template-select-row">
+            <label>
+              处置指令模板
+              <select value={directiveType} onChange={(event) => handleDirectiveType(event.target.value)}>
+                {directiveCards.map((card) => (
+                  <option key={card.type} value={card.type}>
+                    {card.type}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="directive-template-tip">{selectedDirectiveCard?.tip}</span>
           </div>
-
-          {isCreatingOrder ? (
-            <div className="directive-editor">
-              <div className="directive-grid">
-                <label>
-                  下发范围
-                  <select value={directiveScope} onChange={(event) => setDirectiveScope(event.target.value)}>
-                    <option value="全网单位">全网单位</option>
-                    <option value="省级单位">省级单位</option>
-                    <option value="核心单位">核心单位</option>
-                    <option value="指定单位">指定单位</option>
-                  </select>
-                </label>
-                <label>
-                  紧急级别
-                  <select value={directivePriority} onChange={(event) => setDirectivePriority(event.target.value)}>
-                    <option value="高">高</option>
-                    <option value="严重">严重</option>
-                  </select>
-                </label>
-                <label>
-                  目标主体
-                  <input value={directiveTarget} onChange={(event) => setDirectiveTarget(event.target.value)} />
-                </label>
-              </div>
-              <textarea value={directiveBody} onChange={(event) => setDirectiveBody(event.target.value)} />
-              <div className="directive-editor-actions">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() =>
-                    setDirectiveBody(buildDirectiveBody(directiveType, selectedEvent, directiveScope, directiveTarget))
-                  }
-                >
-                  重置文案
-                </button>
-                <button type="button" className="primary-btn" onClick={issueDirective}>
-                  <Send size={14} />
-                  下发指令
-                </button>
-              </div>
-            </div>
-          ) : null}
 
           <div className="directive-feed">
             {orders.length === 0 ? (
@@ -235,50 +190,116 @@ function ReportCenter({ selectedEvent }) {
         </div>
       </div>
 
-      {previewOrder ? (
-        <div className="alert-modal-mask" onClick={() => setPreviewOrder(null)}>
-          <div className="alert-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="alert-modal-head">
-              <strong>{previewOrder.type} - 指令详情</strong>
-              <button type="button" className="close-btn" onClick={() => setPreviewOrder(null)}>
-                关闭
-              </button>
-            </div>
+      {showCreateOrderModal && canPortal
+        ? createPortal(
+            <div className="alert-modal-mask report-global-mask" onClick={() => setShowCreateOrderModal(false)}>
+              <div
+                className="alert-modal report-hub-modal report-global-modal"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="alert-modal-head">
+                  <strong>新建处置指令</strong>
+                  <button type="button" className="close-btn" onClick={() => setShowCreateOrderModal(false)}>
+                    关闭
+                  </button>
+                </div>
 
-            <div className="alert-meta-grid">
-              <div className="alert-meta-item">
-                <span>下发对象</span>
-                <strong>{previewOrder.target}</strong>
+                <div className="directive-editor">
+                  <div className="directive-grid">
+                    <label>
+                      下发范围
+                      <select value={directiveScope} onChange={(event) => setDirectiveScope(event.target.value)}>
+                        <option value="全网单位">全网单位</option>
+                        <option value="省级单位">省级单位</option>
+                        <option value="核心单位">核心单位</option>
+                        <option value="指定单位">指定单位</option>
+                      </select>
+                    </label>
+                    <label>
+                      紧急级别
+                      <select value={directivePriority} onChange={(event) => setDirectivePriority(event.target.value)}>
+                        <option value="高">高</option>
+                        <option value="严重">严重</option>
+                      </select>
+                    </label>
+                    <label>
+                      目标主体
+                      <input value={directiveTarget} onChange={(event) => setDirectiveTarget(event.target.value)} />
+                    </label>
+                  </div>
+                  <textarea value={directiveBody} onChange={(event) => setDirectiveBody(event.target.value)} />
+                  <div className="directive-editor-actions">
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={() =>
+                        setDirectiveBody(buildDirectiveBody(directiveType, selectedEvent, directiveScope, directiveTarget))
+                      }
+                    >
+                      重置文案
+                    </button>
+                    <button type="button" className="primary-btn" onClick={issueDirective}>
+                      <Send size={14} />
+                      下发指令
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="alert-meta-item">
-                <span>下发范围</span>
-                <strong>{previewOrder.scope}</strong>
-              </div>
-              <div className="alert-meta-item">
-                <span>紧急级别</span>
-                <strong>{previewOrder.priority}</strong>
-              </div>
-              <div className="alert-meta-item">
-                <span>当前状态</span>
-                <strong>{previewOrder.status}</strong>
-              </div>
-              <div className="alert-meta-item">
-                <span>签收状态</span>
-                <strong>{previewOrder.signoff}</strong>
-              </div>
-              <div className="alert-meta-item">
-                <span>下发时间</span>
-                <strong>{previewOrder.time}</strong>
-              </div>
-            </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
-            <div className="alert-raw-block">
-              <strong>指令内容</strong>
-              <pre>{previewOrder.body ?? previewOrder.feedback}</pre>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {previewOrder && canPortal
+        ? createPortal(
+            <div className="alert-modal-mask report-global-mask" onClick={() => setPreviewOrder(null)}>
+              <div
+                className="alert-modal report-hub-modal report-global-modal"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="alert-modal-head">
+                  <strong>{previewOrder.type} - 指令详情</strong>
+                  <button type="button" className="close-btn" onClick={() => setPreviewOrder(null)}>
+                    关闭
+                  </button>
+                </div>
+
+                <div className="alert-meta-grid">
+                  <div className="alert-meta-item">
+                    <span>下发对象</span>
+                    <strong>{previewOrder.target}</strong>
+                  </div>
+                  <div className="alert-meta-item">
+                    <span>下发范围</span>
+                    <strong>{previewOrder.scope}</strong>
+                  </div>
+                  <div className="alert-meta-item">
+                    <span>紧急级别</span>
+                    <strong>{previewOrder.priority}</strong>
+                  </div>
+                  <div className="alert-meta-item">
+                    <span>当前状态</span>
+                    <strong>{previewOrder.status}</strong>
+                  </div>
+                  <div className="alert-meta-item">
+                    <span>签收状态</span>
+                    <strong>{previewOrder.signoff}</strong>
+                  </div>
+                  <div className="alert-meta-item">
+                    <span>下发时间</span>
+                    <strong>{previewOrder.time}</strong>
+                  </div>
+                </div>
+
+                <div className="alert-raw-block">
+                  <strong>指令内容</strong>
+                  <pre>{previewOrder.body ?? previewOrder.feedback}</pre>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

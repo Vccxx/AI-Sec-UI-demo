@@ -3397,11 +3397,11 @@ body {
   padding: 8px;
   display: grid;
   gap: 7px;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .command-section.command-main-only {
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .command-section.report-subsection {
@@ -3418,6 +3418,38 @@ body {
 .command-section-head strong {
   color: #133e6d;
   font-size: 13px;
+}
+
+.directive-template-select-row {
+  border: 1px solid #bfd4ee;
+  border-radius: 9px;
+  background: rgba(245, 251, 255, 0.92);
+  padding: 7px;
+  display: grid;
+  gap: 5px;
+}
+
+.directive-template-select-row label {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  color: #4f6788;
+}
+
+.directive-template-select-row select {
+  border: 1px solid #b9cfe8;
+  background: rgba(255, 255, 255, 0.96);
+  color: #163053;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 7px 8px;
+  font-family: inherit;
+}
+
+.directive-template-tip {
+  font-size: 11px;
+  color: #5f7897;
+  line-height: 1.35;
 }
 
 .directive-card-grid {
@@ -3627,7 +3659,6 @@ body {
     grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .directive-card-grid,
   .directive-grid {
     grid-template-columns: 1fr;
   }

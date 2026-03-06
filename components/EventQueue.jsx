@@ -116,14 +116,14 @@ function EventQueue({
           className={`queue-tab ${activeTab === 'attack' ? 'active' : ''}`}
           onClick={() => setActiveTab('attack')}
         >
-          攻击事件
+          真实攻击事件
         </button>
         <button
           type="button"
           className={`queue-tab ${activeTab === 'noise' ? 'active' : ''}`}
           onClick={() => setActiveTab('noise')}
         >
-          AI降噪
+          AI研判无威胁事件
         </button>
       </div>
 
@@ -237,7 +237,7 @@ function EventQueue({
         <>
           <div className="queue-summary">
             <div className="summary-total">
-              <span>AI降噪总量</span>
+              <span>AI研判无威胁事件总量</span>
               <strong>{filteredNoiseEvents.length}/{noiseEvents.length}</strong>
             </div>
             <div className="summary-status-grid noise">

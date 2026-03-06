@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, ChevronRight, Cpu, GitMerge, Send, Timer, TerminalSquare } from 'lucide-react'
 
+const ANALYSIS_TYPING_INTERVAL_MS = 6
+
 function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAnalysisReady }) {
+  const isDisposed = selectedEvent.disposalStatus === '已处置'
+
   const evidenceById = useMemo(() => {
     const entries = (selectedEvent.authenticityEvidence ?? []).map((item, index) => [
       item.id ?? `E-${String(index + 1).padStart(2, '0')}`,
@@ -97,10 +101,12 @@ function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAna
   const [grayPhase, setGrayPhase] = useState(0)
   const [grayLatency, setGrayLatency] = useState(0)
   const [grayDone, setGrayDone] = useState(false)
+  const [grayStarted, setGrayStarted] = useState(false)
   const [grayPhaseResult, setGrayPhaseResult] = useState({})
   const dialogueListRef = useRef(null)
 
   const analysisLines = useMemo(() => typedAnalysis.split('\n'), [typedAnalysis])
+  const isAnalysisComplete = !analysisTyping && typedAnalysis === finalAnalysis && finalAnalysis.length > 0
 
   const getRoleMeta = (role) => {
     if (role === 'user') return { label: '用户', className: 'user' }
@@ -151,6 +157,12 @@ function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAna
   }, [selectedEvent])
 
   useEffect(() => {
+    if (isDisposed) {
+      setTypedAnalysis(finalAnalysis)
+      setAnalysisTyping(false)
+      return undefined
+    }
+
     let index = 0
     setTypedAnalysis('')
     setAnalysisTyping(true)
@@ -162,14 +174,40 @@ function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAna
         window.clearInterval(timer)
         setAnalysisTyping(false)
       }
-    }, 12)
+    }, ANALYSIS_TYPING_INTERVAL_MS)
 
     return () => window.clearInterval(timer)
-  }, [finalAnalysis])
+  }, [finalAnalysis, isDisposed])
 
   useEffect(() => {
+    setGrayStarted(false)
+    setGrayPhase(0)
+    setGrayLatency(0)
+    setGrayDone(false)
+    setGrayPhaseResult({})
+  }, [selectedEvent.id])
+
+  useEffect(() => {
+    if (!isAnalysisComplete) return
+
+    if (isDisposed) {
+      setGrayStarted(true)
+      setGrayPhase(grayPhases.length)
+      setGrayLatency(0)
+      setGrayDone(true)
+      setGrayPhaseResult(
+        Object.fromEntries(grayPhases.map((_, index) => [index, '已完成（已处置事件）'])),
+      )
+      onGrayAnalysisReady?.(selectedEvent.id, {
+        ...grayBlueprint,
+        latencyMs: 0,
+      })
+      return undefined
+    }
+
     let cancelled = false
     const begin = Date.now()
+    setGrayStarted(true)
     setGrayPhase(0)
     setGrayLatency(0)
     setGrayDone(false)
@@ -207,7 +245,7 @@ function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAna
     return () => {
       cancelled = true
     }
-  }, [selectedEvent.id])
+  }, [isAnalysisComplete, isDisposed, selectedEvent.id, grayBlueprint, grayPhases, onGrayAnalysisReady])
 
   useEffect(() => {
     const node = dialogueListRef.current
@@ -218,7 +256,17 @@ function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAna
     })
 
     return () => window.cancelAnimationFrame(raf)
-  }, [dialogues, reasoningItems])
+  }, [
+    dialogues,
+    reasoningItems,
+    typedAnalysis,
+    analysisTyping,
+    grayStarted,
+    grayPhase,
+    grayDone,
+    grayPhaseResult,
+    grayLatency,
+  ])
 
   const handleAsk = (event) => {
     event.preventDefault()
@@ -324,7 +372,13 @@ function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAna
             <div className="gray-analysis-block">
               <div className="gray-analysis-head">
                 <span>灰度分析</span>
-                <em>{grayDone ? `交互完成 · 总时延 ${grayLatency}ms` : `交互中 · 已耗时 ${grayLatency}ms`}</em>
+                <em>
+                  {!grayStarted
+                    ? '等待分析结果输出完成...'
+                    : grayDone
+                      ? `交互完成 · 总时延 ${grayLatency}ms`
+                      : `交互中 · 已耗时 ${grayLatency}ms`}
+                </em>
               </div>
 
               <div className="gray-phase-list">
