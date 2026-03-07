@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import HeaderStats from './components/HeaderStats'
 import EventQueue from './components/EventQueue'
 import CorrelationAnalysis from './components/CorrelationAnalysis'
@@ -11,15 +11,81 @@ import {
   attackTrend24h,
   defaultTemplates,
   mockEvents,
+  sampleReportLibrary,
   sampleReports,
 } from './data/mockData'
 import './App.css'
+
+const privateIpRegex = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/
+
+const inferEventCategory = (event) => {
+  if (event.eventCategory) return event.eventCategory
+
+  const text = `${event.title ?? ''} ${event.focusType ?? ''} ${event.summary ?? ''} ${event.target ?? ''}`
+  if (/钓鱼|elink|恶意文件|伪装登录|诱导|仿冒/.test(text)) return '钓鱼事件'
+  if (privateIpRegex.test(event.sourceIp ?? '')) return '内网事件'
+  return '外网事件'
+}
+
+const buildDefaultFlexibleSteps = (event) => {
+  const category = inferEventCategory(event)
+
+  if (category === '钓鱼事件') {
+    return [
+      '对可疑会话执行引流镜像，转入诱捕链路并保留原始证据。',
+      '下发终端仿真页面阻断二次点击，回收已暴露会话令牌。',
+      '投放蜜罐身份与假资源路径，追踪攻击者后续操作意图。',
+      '联动邮件与IM网关进行同源样本扩散抑制，生成回溯报告。',
+    ]
+  }
+
+  if (category === '内网事件') {
+    return [
+      '对攻击源执行分段限速与访问降级，避免业务一刀切中断。',
+      '将可疑横向流量引流至内网蜜网，持续采集攻击链证据。',
+      '对敏感资产启用临时最小权限策略，保留必要生产访问白名单。',
+      '根据灰度评分动态收敛东西向路径，完成处置闭环验证。',
+    ]
+  }
+
+  return [
+    '将攻击源流量切换至弹性清洗与挑战通道，维持正常用户可达性。',
+    '对高风险请求注入动态延迟与行为校验，降低攻击效率。',
+    '把可疑会话导入公网诱捕节点，收集来源画像与攻击指纹。',
+    '依据灰度分值分层收紧策略，逐步收敛至阻断策略。',
+  ]
+}
+
+const buildGrayBlueprint = (event) => {
+  const category = inferEventCategory(event)
+  const steps = event.flexibleDisposalSteps?.length
+    ? event.flexibleDisposalSteps
+    : buildDefaultFlexibleSteps(event)
+  const score = event.grayScore ?? (category === '钓鱼事件' ? 87 : category === '内网事件' ? 72 : 78)
+  const level = score >= 85 ? '高灰度' : score >= 70 ? '中灰度' : '低灰度'
+
+  return {
+    eventId: event.id,
+    category,
+    score,
+    level,
+    autoExecute: event.grayAutoExecute ?? category === '钓鱼事件',
+    steps,
+    payload: {
+      analysisResult: event.reasoningSteps?.at(-1) ?? event.summary,
+      correlationSummary: event.relatedSources?.map((item) => item.name).join('、') ?? '无',
+      basicInfo: `${event.target} | ${event.sourceIp} | ${event.timeWindow}`,
+    },
+  }
+}
 
 function App() {
   const [attackEvents, setAttackEvents] = useState(
     mockEvents.map((event) => ({
       ...event,
       disposalStatus: event.disposalStatus === '已处置' ? '已处置' : '未处置',
+      eventCategory: inferEventCategory(event),
+      flexibleDisposalSteps: event.flexibleDisposalSteps ?? buildDefaultFlexibleSteps(event),
     })),
   )
   const [views, setViews] = useState([
@@ -30,6 +96,7 @@ function App() {
   const [templates, setTemplates] = useState(defaultTemplates)
   const [selectedTemplate, setSelectedTemplate] = useState(defaultTemplates[0].name)
   const [reports, setReports] = useState(sampleReports)
+  const [grayResultByEventId, setGrayResultByEventId] = useState({})
 
   const activeView = useMemo(
     () => views.find((view) => view.id === activeViewId) ?? views[0],
@@ -55,8 +122,13 @@ function App() {
       : { type: 'noise', id: currentNoiseEvents[0]?.id ?? aiNoiseEvents[0].id })
 
   const selectedAttackEvent = useMemo(
-    () => currentEvents.find((item) => item.id === selectedItem.id) ?? currentEvents[0] ?? mockEvents[0],
-    [currentEvents, selectedItem],
+    () =>
+      currentEvents.find((item) => item.id === selectedItem.id) ??
+      attackEvents.find((item) => item.id === selectedItem.id) ??
+      currentEvents[0] ??
+      attackEvents[0] ??
+      mockEvents[0],
+    [currentEvents, attackEvents, selectedItem],
   )
 
   const selectedNoiseEvent = useMemo(
@@ -83,6 +155,7 @@ function App() {
       time: noise.time,
       timeWindow: '近15分钟误报聚类分析',
       focusType: 'AI降噪研判',
+      eventCategory: inferEventCategory({ ...noise, sourceIp }),
       attackResult: pending ? '疑似误报（待复核）' : '无害误报',
       summary: noise.reason,
       relatedSources: [
@@ -215,8 +288,11 @@ function App() {
         },
       ],
       actions: ['一键封禁攻击IP', '柔性灰度处置'],
+      flexibleDisposalSteps: buildDefaultFlexibleSteps({ ...noise, sourceIp, eventCategory: '内网事件' }),
     }
   }, [selectedItem, selectedAttackEvent, selectedNoiseEvent])
+
+  const selectedGrayBlueprint = useMemo(() => buildGrayBlueprint(selectedEvent), [selectedEvent])
 
   const selectedTemplateMeta = useMemo(
     () => templates.find((tpl) => tpl.name === selectedTemplate) ?? templates[0],
@@ -376,7 +452,11 @@ function App() {
     }
   }
 
-  const handleCompleteDisposal = (eventId) => {
+  const handleCompleteDisposal = (eventId, viewId = activeViewId) => {
+    const existsInAttackEvents = attackEvents.some((event) => event.id === eventId)
+
+    if (!existsInAttackEvents) return
+
     setAttackEvents((prev) =>
       prev.map((event) =>
         event.id === eventId
@@ -385,7 +465,7 @@ function App() {
               disposalStatus: '已处置',
             }
           : event,
-      ),
+        ),
     )
   }
 
@@ -400,10 +480,30 @@ function App() {
     if (activeViewId === viewId) setActiveViewId('main')
   }
 
+  const handleGrayAnalysisReady = useCallback((eventId, payload) => {
+    setGrayResultByEventId((prev) => ({
+      ...prev,
+      [eventId]: {
+        ...payload,
+        updatedAt: Date.now(),
+      },
+    }))
+  }, [])
+
   return (
     <div className="app-shell">
       <header className="panel header-panel">
-        <HeaderStats aiEfficiencyStages={aiEfficiencyStages} attackTrend24h={attackTrend24h} />
+        <HeaderStats
+          aiEfficiencyStages={aiEfficiencyStages}
+          attackTrend24h={attackTrend24h}
+          templates={templates}
+          selectedTemplate={selectedTemplate}
+          onTemplateChange={setSelectedTemplate}
+          onCreateTemplate={handleCreateTemplate}
+          reports={reports}
+          onUpdateReport={handleUpdateReport}
+          sampleReportLibrary={sampleReportLibrary}
+        />
       </header>
 
       <main className="body-grid">
@@ -429,24 +529,22 @@ function App() {
             <ReasoningLog
               selectedEvent={selectedEvent}
               onFilterCommand={handleFilterCommand}
+              grayBlueprint={selectedGrayBlueprint}
+              onGrayAnalysisReady={handleGrayAnalysisReady}
             />
           </div>
         </section>
 
         <aside className="right-panel">
           <div className="panel right-top">
-            <ReportCenter
-              templates={templates}
-              selectedTemplate={selectedTemplate}
-              onTemplateChange={setSelectedTemplate}
-              onCreateTemplate={handleCreateTemplate}
-              onGenerate={handleGenerateReport}
-              reports={reports}
-              onUpdateReport={handleUpdateReport}
-            />
+            <ReportCenter selectedEvent={selectedEvent} />
           </div>
           <div className="panel right-bottom">
-            <ActionPanel selectedEvent={selectedEvent} onCompleteDisposal={handleCompleteDisposal} />
+            <ActionPanel
+              selectedEvent={selectedEvent}
+              grayResult={grayResultByEventId[selectedEvent.id] ?? null}
+              onCompleteDisposal={(eventId) => handleCompleteDisposal(eventId, activeViewId)}
+            />
           </div>
         </aside>
       </main>

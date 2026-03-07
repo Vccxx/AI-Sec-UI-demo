@@ -826,7 +826,7 @@ const extraEventSeeds = [
     title: '省级结算平台 SQL 注入探测',
     target: '省级结算系统',
     sourceIp: '101.43.99.22',
-    time: '14:08:12',
+    time: '16:13:42',
     disposalStatus: '未处置',
     summary: '参数回显出现数据库报错关键字，存在注入测试链路。',
     timeWindow: '近20分钟持续试探',
@@ -837,7 +837,7 @@ const extraEventSeeds = [
     title: '内网自动化扫描扩散告警',
     target: '内网核心交换系统',
     sourceIp: '10.29.6.14',
-    time: '14:16:37',
+    time: '16:17:08',
     disposalStatus: '处置中',
     summary: '同一IP短时遍历多网段资产，扫描行为未报备。',
     focusType: '内网自动化扫描',
@@ -848,7 +848,7 @@ const extraEventSeeds = [
     title: '调度VPN口令喷洒行为',
     target: '调度VPN认证系统',
     sourceIp: '61.147.22.201',
-    time: '14:28:54',
+    time: '16:36:21',
     disposalStatus: '处置中',
     summary: '同源IP对多个账号进行固定间隔登录尝试。',
     attackResult: '企图（高风险）',
@@ -859,7 +859,7 @@ const extraEventSeeds = [
     title: '核心区东西向异常执行链',
     target: '核心数据库系统',
     sourceIp: '10.8.21.91',
-    time: '14:39:03',
+    time: '16:41:37',
     disposalStatus: '未处置',
     summary: '疑似利用远程执行工具进行批量横向探测。',
     attackResult: '成功（疑似失陷链路）',
@@ -870,7 +870,7 @@ const extraEventSeeds = [
     title: '门户站点疑似 WebShell 上传',
     target: '综合门户系统',
     sourceIp: '23.224.61.39',
-    time: '14:47:28',
+    time: '16:31:16',
     disposalStatus: '未处置',
     summary: '上传接口出现 1.txt/1.html 测试文件痕迹。',
     focusType: '手工渗透行为',
@@ -881,7 +881,7 @@ const extraEventSeeds = [
     title: '蜜罐高危命中与外联探测',
     target: '蜜罐诱捕系统',
     sourceIp: '77.88.190.14',
-    time: '15:03:44',
+    time: '16:26:44',
     disposalStatus: '处置中',
     summary: '攻击源触发蜜罐告警后继续对业务网段探测。',
     focusType: '蜜罐告警',
@@ -893,7 +893,7 @@ const extraEventSeeds = [
     title: '内网RDP弱口令撞库',
     target: '运维堡垒系统',
     sourceIp: '10.17.2.88',
-    time: '15:15:06',
+    time: '16:08:53',
     disposalStatus: '已处置',
     summary: 'RDP 登录失败次数异常，账号字典尝试明显。',
     focusType: '攻击成功类告警（弱口令）',
@@ -904,11 +904,224 @@ const extraEventSeeds = [
     title: '病毒木马 IOC 外联命中',
     target: '营销终端管理系统',
     sourceIp: '10.33.9.112',
-    time: '15:28:31',
+    time: '16:21:19',
     disposalStatus: '未处置',
     summary: '终端解析到高风险域名，疑似远控木马通信。',
     focusType: '病毒木马告警',
     attackResult: '成功（疑似失陷链路）',
+  },
+]
+
+const phishingEventSeeds = [
+  {
+    baseId: 'evt-sql-grid',
+    id: 'evt-phish-elink-group-01',
+    title: '互联网终端 elink 异常拉群',
+    target: '企业IM账号',
+    sourceIp: '203.66.91.34',
+    time: '16:39:55',
+    disposalStatus: '处置中',
+    summary: '异常账号在短时间内拉入大量外部联系人，疑似钓鱼扩散。',
+    focusType: '钓鱼事件',
+    attackResult: '企图（高风险）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 91,
+    flexibleDisposalSteps: [
+      '对异常拉群会话执行灰度冻结并保持组织内正常沟通链路。',
+      '将新增外部联系人消息引流至诱捕工作区，记录钓鱼话术样本。',
+      '对可疑分享链接注入动态风险提示并替换为安全跳转页。',
+      '同步终端侧弹窗告警与账号二次认证，阻断后续批量拉群。',
+    ],
+  },
+  {
+    baseId: 'evt-flow-spot',
+    id: 'evt-phish-malware-drop-02',
+    title: '互联网终端恶意文件落地',
+    target: '互联网终端',
+    sourceIp: '58.211.14.72',
+    time: '16:34:18',
+    disposalStatus: '未处置',
+    summary: '终端下载目录出现伪装发票压缩包并触发脚本执行。',
+    focusType: '钓鱼事件',
+    attackResult: '成功（疑似失陷链路）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 93,
+    flexibleDisposalSteps: [
+      '把恶意文件执行流量重定向到沙箱节点，不影响终端基础办公。',
+      '对同哈希文件在网内进行静默阻断并保留原样本备份。',
+      '对触发进程注入低权限隔离策略，阻止横向调用系统敏感接口。',
+      '联动邮件网关回溯相同附件并分批撤回。',
+    ],
+  },
+  {
+    baseId: 'evt-bruteforce-gw',
+    id: 'evt-phish-fake-login-03',
+    title: '仿冒门户登录页凭据收集',
+    target: '浏览器会话',
+    sourceIp: '121.32.80.199',
+    time: '16:29:07',
+    disposalStatus: '处置中',
+    summary: '员工访问仿冒SSO页面并提交账号口令。',
+    focusType: '钓鱼事件',
+    attackResult: '成功（疑似失陷链路）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 95,
+    flexibleDisposalSteps: [
+      '对受影响账号执行会话切断与低摩擦口令重置。',
+      '把仿冒站点访问流量导向取证节点，持续采集攻击基础设施信息。',
+      '为同部门用户启用临时强认证并分层校验历史登录行为。',
+      '输出受影响凭据清单并推送风险解释通知。',
+    ],
+  },
+  {
+    baseId: 'evt-lateral-oms',
+    id: 'evt-phish-mail-link-04',
+    title: '钓鱼邮件链接诱导点击',
+    target: '员工邮箱',
+    sourceIp: '13.55.76.44',
+    time: '16:24:33',
+    disposalStatus: '处置中',
+    summary: '批量主题邮件包含高仿通知链接，点击率异常升高。',
+    focusType: '钓鱼事件',
+    attackResult: '企图（高风险）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 89,
+    flexibleDisposalSteps: [
+      '对可疑链接启用动态重写并引流到蜜罐落地页。',
+      '对已点击用户触发风险弹窗和快捷上报入口。',
+      '对邮件来源域名实施分级限流，保留白名单业务通知。',
+      '自动生成点击用户处置任务并投递到终端响应队列。',
+    ],
+  },
+  {
+    baseId: 'evt-sql-grid',
+    id: 'evt-phish-impersonate-vendor-05',
+    title: '供应商身份仿冒转账诱导',
+    target: '远程办公账号',
+    sourceIp: '45.121.39.88',
+    time: '16:19:26',
+    disposalStatus: '未处置',
+    summary: '攻击者仿冒供应商联系人发起紧急付款请求。',
+    focusType: '钓鱼事件',
+    attackResult: '企图（高风险）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 88,
+    flexibleDisposalSteps: [
+      '对涉财务关键词会话启用灰度审批拦截并保留上下文。',
+      '将异常联系人切换为只读协同态，阻断资金指令下达。',
+      '对历史对话链自动插入反诈核验提醒与二次身份核验。',
+      '联动审计平台生成资金风险核查单。',
+    ],
+  },
+  {
+    baseId: 'evt-flow-spot',
+    id: 'evt-phish-clouddisk-share-06',
+    title: '恶意云盘分享诱导执行',
+    target: '互联网终端',
+    sourceIp: '61.174.118.27',
+    time: '16:15:14',
+    disposalStatus: '处置中',
+    summary: '外链文件伪装为补丁说明，下载后触发宏脚本。',
+    focusType: '钓鱼事件',
+    attackResult: '企图（高风险）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 90,
+    flexibleDisposalSteps: [
+      '对高风险分享外链启用内容引流扫描并保留下载审计。',
+      '对疑似木马文档进行透明替换，向用户展示安全副本。',
+      '限制同源链接在组织内转发频率，防止二次传播。',
+      '联动终端策略禁用高危宏模板并下发解释通知。',
+    ],
+  },
+  {
+    baseId: 'evt-bruteforce-gw',
+    id: 'evt-phish-qrcode-login-07',
+    title: '伪造二维码登录窃取会话',
+    target: '浏览器会话',
+    sourceIp: '106.15.219.53',
+    time: '16:11:32',
+    disposalStatus: '未处置',
+    summary: '伪造登录二维码被重复扫码，出现异常会话绑定。',
+    focusType: '钓鱼事件',
+    attackResult: '成功（疑似失陷链路）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 94,
+    flexibleDisposalSteps: [
+      '冻结异常二维码会话并替换为官方校验页面。',
+      '对已扫码终端实施会话再校验与风险分级重签。',
+      '向可疑来源投放蜜罐二维码链路，追踪攻击设备指纹。',
+      '将异常授权范围回滚至最小权限。',
+    ],
+  },
+  {
+    baseId: 'evt-lateral-oms',
+    id: 'evt-phish-browser-plugin-08',
+    title: '恶意浏览器插件诱导安装',
+    target: '互联网终端',
+    sourceIp: '198.16.73.64',
+    time: '16:06:45',
+    disposalStatus: '处置中',
+    summary: '员工安装伪装效率插件后出现凭据外传行为。',
+    focusType: '钓鱼事件',
+    attackResult: '成功（疑似失陷链路）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 92,
+    flexibleDisposalSteps: [
+      '对可疑插件执行灰度卸载并保留用户白名单插件可用。',
+      '将插件外联请求导入诱捕代理，采集C2特征。',
+      '对受影响账号执行凭据轮换并同步浏览器安全策略。',
+      '生成终端修复建议并自动投递给运维席位。',
+    ],
+  },
+  {
+    baseId: 'evt-sql-grid',
+    id: 'evt-phish-social-link-09',
+    title: '社交平台私信诱导外链',
+    target: '企业IM账号',
+    sourceIp: '74.201.53.90',
+    time: '16:03:27',
+    disposalStatus: '未处置',
+    summary: '员工收到伪装活动邀请链接，落地页请求敏感授权。',
+    focusType: '钓鱼事件',
+    attackResult: '企图（高风险）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 87,
+    flexibleDisposalSteps: [
+      '对可疑私信链接执行风险打标并弹出上下文告警。',
+      '引导点击流量进入蜜罐授权页，阻断真实令牌泄露。',
+      '对异常授权请求启用逐级挑战验证，保持正常社交访问。',
+      '汇总同主题诱导样本并更新情报规则库。',
+    ],
+  },
+  {
+    baseId: 'evt-flow-spot',
+    id: 'evt-phish-fake-update-10',
+    title: '伪装系统更新包投递',
+    target: '员工邮箱',
+    sourceIp: '91.204.46.11',
+    time: '15:57:51',
+    disposalStatus: '处置中',
+    summary: '终端收到伪装更新弹窗并下载不明可执行文件。',
+    focusType: '钓鱼事件',
+    attackResult: '企图（高风险）',
+    eventCategory: '钓鱼事件',
+    grayAutoExecute: true,
+    grayScore: 90,
+    flexibleDisposalSteps: [
+      '对异常更新源执行灰度封控，仅保留官方更新节点可达。',
+      '将伪装更新包引流至沙箱并提取行为画像。',
+      '对下载终端下发临时执行白名单策略，避免误伤业务软件。',
+      '联动补丁管理平台推送官方更新校验提示。',
+    ],
   },
 ]
 
@@ -940,7 +1153,264 @@ const extraEvents = extraEventSeeds.map((seed, index) => {
   return base
 })
 
-mockEvents.push(...extraEvents)
+const addSecondsToTime = (timeText, deltaSeconds) => {
+  const [hh, mm, ss] = timeText.split(':').map((part) => Number.parseInt(part, 10))
+  const baseSeconds = hh * 3600 + mm * 60 + ss
+  const normalized = ((baseSeconds + deltaSeconds) % 86400 + 86400) % 86400
+  const hour = String(Math.floor(normalized / 3600)).padStart(2, '0')
+  const minute = String(Math.floor((normalized % 3600) / 60)).padStart(2, '0')
+  const second = String(normalized % 60).padStart(2, '0')
+  return `${hour}:${minute}:${second}`
+}
+
+const buildPhishingProfile = (seed, index) => {
+  const subject = seed.target
+  const nodeSuffix = index + 1
+  const endpointIp = `10.60.${18 + nodeSuffix}.${22 + nodeSuffix}`
+  const gatewayIp = `10.61.${14 + nodeSuffix}.${31 + nodeSuffix}`
+  const auditIp = `10.62.${10 + nodeSuffix}.${41 + nodeSuffix}`
+
+  const trafficProfiles = {
+    员工邮箱: [
+      { method: 'SMTP', path: '/mail/inbound', status: '202', payload: 'phish_subject=urgent notice; attachment=invoice.zip' },
+      { method: 'HTTPS', path: '/mail/link-redirect', status: '302', payload: 'redirect=phish-landing' },
+      { method: 'AUTH', path: '/mail/sso', status: '401', payload: 'suspicious_token_replay=true' },
+      { method: 'IMAP', path: '/mailbox/sync', status: '200', payload: 'abnormal_device_fingerprint=true' },
+    ],
+    企业IM账号: [
+      { method: 'IM-MSG', path: '/im/group/invite', status: '200', payload: 'bulk_invite=31; external_contact=true' },
+      { method: 'HTTPS', path: '/im/link/open', status: '302', payload: 'short_url=masked campaign' },
+      { method: 'AUTH', path: '/im/session/token', status: '401', payload: 'session_hijack_attempt=true' },
+      { method: 'API', path: '/im/file/share', status: '206', payload: 'mal_doc_delivery=detected' },
+    ],
+    浏览器会话: [
+      { method: 'GET', path: '/login/clone', status: '200', payload: 'page_fingerprint=spoofed sso portal' },
+      { method: 'POST', path: '/auth/submit', status: '302', payload: 'credential_submit=observed' },
+      { method: 'COOKIE', path: '/session/sync', status: '200', payload: 'cookie_rebind=suspected' },
+      { method: 'AUTH', path: '/oauth/token', status: '401', payload: 'replay_signature=high' },
+    ],
+    远程办公账号: [
+      { method: 'VPN', path: '/remote/login', status: '200', payload: 'geo_anomaly=cross-region' },
+      { method: 'AUTH', path: '/remote/challenge', status: '429', payload: 'push_fatigue_pattern=true' },
+      { method: 'POST', path: '/remote/session/upgrade', status: '403', payload: 'privilege_escalation_probe' },
+      { method: 'GET', path: '/remote/file/preview', status: '206', payload: 'sensitive_doc_probe=true' },
+    ],
+    互联网终端: [
+      { method: 'HTTPS', path: '/download/patch-note', status: '200', payload: 'delivery=masqueraded updater' },
+      { method: 'DOWNLOAD', path: '/payload/dropper', status: '206', payload: 'hash=unknown sample' },
+      { method: 'DNS', path: '/resolve/c2', status: 'N/A', payload: 'domain=phish-control.example' },
+      { method: 'AUTH', path: '/browser/sso', status: '401', payload: 'token_reuse=suspected' },
+    ],
+  }
+
+  const profile = trafficProfiles[subject] ?? trafficProfiles['互联网终端']
+
+  const relatedServers = [
+    {
+      id: `srv-phish-${nodeSuffix}-a`,
+      name: `${subject}节点`,
+      owner: '终端安全运营组-值班席',
+      ip: endpointIp,
+      port: '443',
+      zone: '互联网终端域',
+      risk: '高危',
+      alertCount: 12,
+      links: ['asset_map', 'edr', 'traffic', 'siem'],
+    },
+    {
+      id: `srv-phish-${nodeSuffix}-b`,
+      name: `${subject}接入网关`,
+      owner: '身份与接入组-值班席',
+      ip: gatewayIp,
+      port: '8443',
+      zone: '互联网接入区',
+      risk: '高危',
+      alertCount: 9,
+      links: ['asset_map', 'iam', 'traffic', 'intel'],
+    },
+    {
+      id: `srv-phish-${nodeSuffix}-c`,
+      name: `${subject}审计节点`,
+      owner: '安全审计组-值班席',
+      ip: auditIp,
+      port: '9200',
+      zone: '审计分析区',
+      risk: '中危',
+      alertCount: 7,
+      links: ['asset_map', 'siem', 'iam', 'intel'],
+    },
+  ]
+
+  const relatedSources = [
+    {
+      key: 'asset_map',
+      name: '资产安全测绘',
+      status: `${subject}处于互联网暴露链路，具备被钓鱼诱导和会话劫持风险。`,
+      alerts: [
+        `asset=${subject} zone=互联网终端域 exposure=internet-facing`,
+        `identity_path=sso+mail+im privilege_scope=employee account`,
+      ],
+    },
+    {
+      key: 'iam',
+      name: '身份审计',
+      status: '短时出现异常认证尝试与会话重放特征。',
+      alerts: [
+        `${seed.time} src=${seed.sourceIp} auth_fail_spike=true`,
+        'session_rebind_detected=true abnormal_device_fingerprint=true',
+      ],
+    },
+    {
+      key: 'edr',
+      name: 'EDR 记录',
+      status: '终端侧检测到可疑落地与执行链路。',
+      alerts: [
+        `${seed.time} process=browser child=updater.exe risk=high`,
+        'commandline=encoded script with remote fetch',
+      ],
+    },
+    {
+      key: 'traffic',
+      name: '流量分析',
+      status: '发现钓鱼投递后同源多跳访问与回连行为。',
+      alerts: [
+        `src=${seed.sourceIp} multi-stage access window=${seed.time}`,
+        'click->download->auth chain reconstructed',
+      ],
+    },
+    {
+      key: 'intel',
+      name: '威胁情报',
+      status: '攻击来源与钓鱼基础设施画像存在关联。',
+      alerts: [
+        `ioc_hit=${seed.sourceIp} tag=phishing infra confidence=0.89`,
+        'campaign=credential harvest + malware delivery',
+      ],
+    },
+    {
+      key: 'siem',
+      name: 'SIEM 事件',
+      status: '多设备告警形成同源钓鱼攻击链。',
+      alerts: [
+        'attack_chain=delivery->click->credential/session risk=high',
+        `subject=${subject} linked_devices=3 confidence=0.91`,
+      ],
+    },
+  ]
+
+  const rawTraffic = profile.map((item, trafficIndex) => ({
+    serverId: relatedServers[trafficIndex % relatedServers.length].id,
+    time: addSecondsToTime(seed.time, trafficIndex * 19),
+    srcIp: seed.sourceIp,
+    dstIp: relatedServers[trafficIndex % relatedServers.length].ip,
+    dstPort: relatedServers[trafficIndex % relatedServers.length].port,
+    method: item.method,
+    path: item.path,
+    status: item.status,
+    payload: item.payload,
+  }))
+
+  const reasoningSteps = [
+    `告警聚合：${subject}在近20分钟出现钓鱼投递与异常交互，攻击源为 ${seed.sourceIp}。`,
+    `行为核验：发现“链接诱导/文件落地/会话重放”复合特征，攻击目标指向${subject}。`,
+    '多源关联：身份审计、终端检测与流量侧证据形成同源攻击链，排除误报可能。',
+    `风险判定：当前攻击结果为「${seed.attackResult}」，存在凭据泄露或会话失控风险。`,
+    `结论与建议：按${subject}场景执行柔性灰度处置，优先控制扩散并保留取证链路。`,
+  ]
+
+  const authenticityEvidence = [
+    {
+      id: 'E-01',
+      sourceKey: 'asset_map',
+      name: '资产安全测绘',
+      summary: `${subject}位于互联网暴露链路，具备被诱导触达条件。`,
+      raw: `subject=${subject} exposure=internet-facing identity_path=sso+mail+im`,
+      riskSignal: '暴露面成立',
+      stepIndex: 0,
+    },
+    {
+      id: 'E-02',
+      sourceKey: 'iam',
+      name: '身份审计',
+      summary: '检测到异常认证尝试与会话重放迹象。',
+      raw: `src=${seed.sourceIp} auth_fail_spike=true session_rebind=true`,
+      riskSignal: '凭据风险信号',
+      stepIndex: 1,
+    },
+    {
+      id: 'E-03',
+      sourceKey: 'edr',
+      name: 'EDR 记录',
+      summary: '终端发现可疑进程与脚本调用，吻合钓鱼落地特征。',
+      raw: 'process=browser child=updater.exe commandline=encoded script',
+      riskSignal: '终端侧落地证据',
+      stepIndex: 2,
+    },
+    {
+      id: 'E-04',
+      sourceKey: 'siem',
+      name: 'SIEM 事件',
+      summary: '跨设备攻击链重建为投递->点击->凭据/会话风险。',
+      raw: `attack_chain=delivery->click->credential/session subject=${subject}`,
+      riskSignal: '攻击链闭环',
+      stepIndex: 2,
+    },
+    {
+      id: 'E-05',
+      sourceKey: 'intel',
+      name: '威胁情报',
+      summary: '攻击源命中钓鱼基础设施画像，风险置信较高。',
+      raw: `ioc_hit=${seed.sourceIp} tag=phishing infra confidence=0.89`,
+      riskSignal: '恶意来源确认',
+      stepIndex: 3,
+    },
+  ]
+
+  return {
+    timeWindow: '近20分钟钓鱼诱导与终端响应',
+    relatedServers,
+    relatedSources,
+    rawTraffic,
+    reasoningSteps,
+    reasoningEvidenceLinks: [
+      ['E-01', 'E-02'],
+      ['E-02', 'E-03'],
+      ['E-03', 'E-04'],
+      ['E-04', 'E-05'],
+      ['E-01', 'E-05'],
+    ],
+    authenticityEvidence,
+  }
+}
+
+const phishingEvents = phishingEventSeeds.map((seed, index) => {
+  const base = deepClone(baseEventById[seed.baseId])
+  const phishingProfile = buildPhishingProfile(seed, index)
+  base.id = seed.id
+  base.title = seed.title
+  base.target = seed.target
+  base.sourceIp = seed.sourceIp
+  base.time = seed.time
+  base.disposalStatus = seed.disposalStatus
+  base.summary = seed.summary
+  base.focusType = seed.focusType
+  base.attackResult = seed.attackResult
+  base.eventCategory = seed.eventCategory
+  base.grayAutoExecute = seed.grayAutoExecute
+  base.grayScore = seed.grayScore
+  base.flexibleDisposalSteps = seed.flexibleDisposalSteps
+  base.timeWindow = phishingProfile.timeWindow
+  base.relatedServers = phishingProfile.relatedServers
+  base.relatedSources = phishingProfile.relatedSources
+  base.rawTraffic = phishingProfile.rawTraffic
+  base.reasoningSteps = phishingProfile.reasoningSteps
+  base.reasoningEvidenceLinks = phishingProfile.reasoningEvidenceLinks
+  base.authenticityEvidence = phishingProfile.authenticityEvidence
+
+  return base
+})
+
+mockEvents.push(...extraEvents, ...phishingEvents)
 
 export const sampleReports = [
   {
@@ -1026,6 +1496,45 @@ export const sampleReports = [
     eventTitle: '病毒木马 IOC 外联命中',
     timestamp: '2026/3/1 15:34:07',
     content: '【摘要】终端命中远控IOC。\n【风险】终端疑似被控。\n【建议】隔离终端并提取样本。',
+  },
+]
+
+export const sampleReportLibrary = [
+  {
+    id: 'library-01',
+    category: '联合处置通告',
+    template: '联合防御通告模板',
+    eventTitle: '全网单位联合处置演练样例',
+    timestamp: '2026/3/3 09:20:14',
+    content:
+      '【背景】跨区域告警关联命中，需统一下发协同策略。\n【动作】全网单位同步启用灰度引流、账号风险校验和证据回传。\n【回执】12/12 单位签收，10/12 单位完成首轮处置。',
+  },
+  {
+    id: 'library-02',
+    category: '应急升级报告',
+    template: '应急升级快报模板',
+    eventTitle: '一级应急升级执行样例',
+    timestamp: '2026/3/3 11:06:39',
+    content:
+      '【背景】攻击源持续扩大，跨业务系统出现同步风险信号。\n【动作】由二级响应升级至一级响应，联动SOC/网关/终端完成分层处置。\n【回执】核心链路恢复稳定，风险面收敛。',
+  },
+  {
+    id: 'library-03',
+    category: '关停指令复盘',
+    template: '系统关停复盘模板',
+    eventTitle: '高风险系统临时关停样例',
+    timestamp: '2026/3/3 14:42:51',
+    content:
+      '【背景】核心系统出现被控迹象，存在横向扩散风险。\n【动作】执行临时关停指令并保留审计链路，按阶段恢复白名单业务。\n【结论】未出现二次扩散，恢复窗口控制在30分钟内。',
+  },
+  {
+    id: 'library-04',
+    category: '钓鱼专项',
+    template: '终端钓鱼处置模板',
+    eventTitle: '员工邮箱钓鱼投递专项样例',
+    timestamp: '2026/3/3 16:18:07',
+    content:
+      '【背景】员工邮箱与浏览器会话同时触发异常认证。\n【动作】自动执行柔性灰度处置，实施会话冻结、链接引流与样本回收。\n【回执】攻击链完成闭环，终端侧未见持续外联。',
   },
 ]
 

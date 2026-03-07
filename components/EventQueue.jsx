@@ -16,6 +16,20 @@ function EventQueue({
   const [attackFilter, setAttackFilter] = useState('全部')
   const [noiseFilter, setNoiseFilter] = useState('全部')
   const [attackSort, setAttackSort] = useState('time')
+  const [categoryFilter, setCategoryFilter] = useState('全部')
+
+  const categoryCount = useMemo(
+    () =>
+      events.reduce(
+        (acc, event) => {
+          const category = event.eventCategory ?? '外网事件'
+          acc[category] = (acc[category] ?? 0) + 1
+          return acc
+        },
+        { 内网事件: 0, 外网事件: 0, 钓鱼事件: 0 },
+      ),
+    [events],
+  )
 
   const statusCount = useMemo(
     () =>
@@ -43,9 +57,14 @@ function EventQueue({
   )
 
   const filteredAttackEvents = useMemo(() => {
-    if (attackFilter === '全部') return events
-    return events.filter((event) => (event.disposalStatus === '已处置' ? '已处置' : '未处置') === attackFilter)
-  }, [attackFilter, events])
+    return events.filter((event) => {
+      const statusMatched =
+        attackFilter === '全部' ||
+        (event.disposalStatus === '已处置' ? '已处置' : '未处置') === attackFilter
+      const categoryMatched = categoryFilter === '全部' || event.eventCategory === categoryFilter
+      return statusMatched && categoryMatched
+    })
+  }, [attackFilter, categoryFilter, events])
 
   const sortedAttackEvents = useMemo(() => {
     const severityOrder = { 紧急: 3, 高危: 2, 中危: 1 }
@@ -97,61 +116,81 @@ function EventQueue({
           className={`queue-tab ${activeTab === 'attack' ? 'active' : ''}`}
           onClick={() => setActiveTab('attack')}
         >
-          攻击事件
+          真实攻击事件
         </button>
         <button
           type="button"
           className={`queue-tab ${activeTab === 'noise' ? 'active' : ''}`}
           onClick={() => setActiveTab('noise')}
         >
-          AI降噪
+          AI研判无威胁事件
         </button>
       </div>
 
       {activeTab === 'attack' ? (
         <>
           <div className="queue-summary">
-            <div className="summary-total">
-              <span>告警总数</span>
-              <strong>{filteredAttackEvents.length}/{events.length}</strong>
+            <div className="display-settings-box">
+              <div className="display-settings-head">
+                <span>告警显示设置</span>
+                <strong>{filteredAttackEvents.length}/{events.length}</strong>
+              </div>
+              <div className="display-settings-controls">
+                <div className="status-filter-row">
+                  <button
+                    type="button"
+                    className={`category-chip ${attackFilter === '未处置' ? 'active' : ''}`}
+                    onClick={() => setAttackFilter((prev) => (prev === '未处置' ? '全部' : '未处置'))}
+                  >
+                    <span>未处置</span>
+                    <strong>{statusCount['未处置']}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`category-chip ${attackFilter === '已处置' ? 'active' : ''}`}
+                    onClick={() => setAttackFilter((prev) => (prev === '已处置' ? '全部' : '已处置'))}
+                  >
+                    <span>已处置</span>
+                    <strong>{statusCount['已处置']}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`category-chip ${attackFilter === '全部' ? 'active' : ''}`}
+                    onClick={() => setAttackFilter('全部')}
+                  >
+                    <span>全部</span>
+                    <strong>{events.length}</strong>
+                </button>
+                </div>
+
+                <div className="queue-sorter inline compact">
+                  <span>排序方式</span>
+                  <select value={attackSort} onChange={(event) => setAttackSort(event.target.value)}>
+                    <option value="time">按时间</option>
+                    <option value="severity">按危急程度</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <div className="summary-status-grid">
-              <button
-                type="button"
-                className={`summary-status unhandled ${attackFilter === '未处置' ? 'active' : ''}`}
-                onClick={() => setAttackFilter((prev) => (prev === '未处置' ? '全部' : '未处置'))}
-              >
-                <span>未处置</span>
-                <strong>{statusCount['未处置']}</strong>
-              </button>
-              <button
-                type="button"
-                className={`summary-status handled ${attackFilter === '已处置' ? 'active' : ''}`}
-                onClick={() => setAttackFilter((prev) => (prev === '已处置' ? '全部' : '已处置'))}
-              >
-                <span>已处置</span>
-                <strong>{statusCount['已处置']}</strong>
-              </button>
-              <button
-                type="button"
-                className={`summary-status neutral ${attackFilter === '全部' ? 'active' : ''}`}
-                onClick={() => setAttackFilter('全部')}
-              >
-                <span>全部</span>
-                <strong>{events.length}</strong>
-              </button>
+            <div className="event-category-box">
+              <div className="event-category-head">事件类型过滤</div>
+              <div className="category-filter-row">
+                {['内网事件', '外网事件', '钓鱼事件', '全部'].map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    className={`category-chip ${categoryFilter === category ? 'active' : ''}`}
+                    onClick={() => setCategoryFilter(category)}
+                  >
+                    <span>{category}</span>
+                    <strong>{category === '全部' ? events.length : categoryCount[category] ?? 0}</strong>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="queue-scrollbox">
-            <div className="queue-sorter">
-              <span>排序方式</span>
-              <select value={attackSort} onChange={(event) => setAttackSort(event.target.value)}>
-                <option value="time">按时间</option>
-                <option value="severity">按危急程度</option>
-              </select>
-            </div>
-
             <div className="queue-list">
               {sortedAttackEvents.length === 0 ? <div className="empty-tip">当前筛选条件下暂无告警。</div> : null}
               {sortedAttackEvents.map((event) => {
@@ -176,6 +215,9 @@ function EventQueue({
                     <h3>{event.title}</h3>
                     <p>{event.summary}</p>
                     <div className="event-tags">
+                      <span className={`event-tag category ${event.eventCategory || '外网事件'}`}>
+                        {event.eventCategory || '外网事件'}
+                      </span>
                       <span className="event-tag focus">{event.focusType}</span>
                       <span className="event-tag window">{event.timeWindow}</span>
                     </div>
@@ -195,7 +237,7 @@ function EventQueue({
         <>
           <div className="queue-summary">
             <div className="summary-total">
-              <span>AI降噪总量</span>
+              <span>AI研判无威胁事件总量</span>
               <strong>{filteredNoiseEvents.length}/{noiseEvents.length}</strong>
             </div>
             <div className="summary-status-grid noise">

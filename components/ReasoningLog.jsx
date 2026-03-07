@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Send, TerminalSquare } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Cpu, GitMerge, Send, Timer, TerminalSquare } from 'lucide-react'
 
-function ReasoningLog({ selectedEvent, onFilterCommand }) {
+const ANALYSIS_TYPING_INTERVAL_MS = 6
+
+function ReasoningLog({ selectedEvent, onFilterCommand, grayBlueprint, onGrayAnalysisReady }) {
+  const isDisposed = selectedEvent.disposalStatus === '已处置'
+
   const evidenceById = useMemo(() => {
     const entries = (selectedEvent.authenticityEvidence ?? []).map((item, index) => [
       item.id ?? `E-${String(index + 1).padStart(2, '0')}`,
@@ -43,32 +47,49 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
   )
 
   const finalAnalysis = useMemo(() => {
-    const topActions = (selectedEvent.actions ?? []).slice(0, 2).join('、')
-
-    const attackedHosts = (selectedEvent.relatedServers ?? [])
+    const isPhishing =
+      selectedEvent.eventCategory === '钓鱼事件' ||
+      /钓鱼|邮箱|终端|会话|IM/.test(`${selectedEvent.focusType ?? ''}${selectedEvent.target ?? ''}${selectedEvent.title ?? ''}`)
+    const isInternal = selectedEvent.eventCategory === '内网事件'
+    const impactedNodes = (selectedEvent.relatedServers ?? [])
+      .slice(0, 3)
       .map((server) => `${server.name}(${server.ip})`)
       .join('、')
 
-    const trafficTimes = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.time))).sort()
-    const timeFeature =
+    const traffic = selectedEvent.rawTraffic ?? []
+    const trafficTimes = Array.from(new Set(traffic.map((item) => item.time))).sort()
+    const methods = Array.from(new Set(traffic.map((item) => item.method))).filter(Boolean)
+    const paths = Array.from(new Set(traffic.map((item) => item.path))).filter(Boolean)
+    const statusCodes = Array.from(new Set(traffic.map((item) => item.status))).filter(Boolean)
+    const sourceNames = (selectedEvent.relatedSources ?? []).slice(0, 4).map((item) => item.name).join('、')
+    const evidence = (selectedEvent.authenticityEvidence ?? []).slice(0, 3)
+
+    const sceneType = isPhishing
+      ? '互联网账号与终端钓鱼攻击'
+      : isInternal
+        ? '内网同源攻击活动'
+        : '外网对外暴露面攻击'
+
+    const timeLine =
       trafficTimes.length > 0
-        ? `${trafficTimes[0]} 至 ${trafficTimes[trafficTimes.length - 1]} 持续出现同源访问，窗口为「${selectedEvent.timeWindow}」`
-        : `在「${selectedEvent.timeWindow}」窗口内出现连续攻击行为`
+        ? `${trafficTimes[0]} 至 ${trafficTimes[trafficTimes.length - 1]}（${selectedEvent.timeWindow}）`
+        : selectedEvent.timeWindow
 
-    const methods = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.method))).filter(Boolean)
-    const paths = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.path))).filter(Boolean)
-    const statusCodes = Array.from(new Set((selectedEvent.rawTraffic ?? []).map((item) => item.status))).filter(Boolean)
+    const chainSummary =
+      traffic.length > 0
+        ? `方式 ${methods.slice(0, 3).join(' / ') || 'N/A'}，路径 ${paths.slice(0, 2).join('、') || 'N/A'}，状态 ${statusCodes.slice(0, 3).join(' -> ') || 'N/A'}`
+        : '当前未回传完整原始流量序列'
 
-    const methodFeature = methods.length > 0 ? methods.join(' / ') : '多种协议行为混合'
-    const pathFeature = paths.length > 0 ? paths.slice(0, 3).join('、') : '关键业务路径'
-    const statusFeature = statusCodes.length > 0 ? statusCodes.join(' -> ') : '状态码异常波动'
+    const evidenceLine =
+      evidence.length > 0
+        ? evidence.map((item) => `${item.id}/${item.name}：${item.summary}`).join('；')
+        : `关键证据来自 ${sourceNames || '多源设备日志'}，真实性需继续复核。`
 
     return [
-      `综合判定：本次告警属于「${selectedEvent.focusType}」场景，攻击结果为「${selectedEvent.attackResult}」，攻击源 ${selectedEvent.sourceIp} 对目标「${selectedEvent.target}」形成持续威胁。`,
-      `受攻击主机：${attackedHosts || selectedEvent.target}。`,
-      `攻击时间特征：${timeFeature}，呈现高频且阶段性增强的访问节奏。`,
-      `攻击手法特征：请求方式以 ${methodFeature} 为主，重点命中 ${pathFeature}，响应结果出现 ${statusFeature} 等可疑变化。`,
-      `处置建议：优先执行 ${topActions}，并结合主机侧日志与边界设备告警完成闭环复核。`,
+      `事件定性：当前告警归类为「${sceneType}」，攻击结果为「${selectedEvent.attackResult}」，攻击源 ${selectedEvent.sourceIp} 正对「${selectedEvent.target}」发起持续威胁。`,
+      `受影响主体：${selectedEvent.target}；关联资产为 ${impactedNodes || selectedEvent.target}。`,
+      `攻击链路：时间窗口 ${timeLine}，${chainSummary}。`,
+      `真实性依据：${evidenceLine}`,
     ].join('\n')
   }, [selectedEvent])
 
@@ -77,14 +98,32 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
   const [expandAll, setExpandAll] = useState(false)
   const [typedAnalysis, setTypedAnalysis] = useState('')
   const [analysisTyping, setAnalysisTyping] = useState(false)
+  const [grayPhase, setGrayPhase] = useState(0)
+  const [grayLatency, setGrayLatency] = useState(0)
+  const [grayDone, setGrayDone] = useState(false)
+  const [grayStarted, setGrayStarted] = useState(false)
+  const [grayPhaseResult, setGrayPhaseResult] = useState({})
   const dialogueListRef = useRef(null)
+  const disposedGrayReportedRef = useRef('')
+
+  const analysisLines = useMemo(() => typedAnalysis.split('\n'), [typedAnalysis])
+  const isAnalysisComplete = !analysisTyping && typedAnalysis === finalAnalysis && finalAnalysis.length > 0
 
   const getRoleMeta = (role) => {
     if (role === 'user') return { label: '用户', className: 'user' }
     if (role === 'bot-warning') return { label: '系统提示', className: 'warning' }
     if (role === 'bot-success') return { label: '系统回执', className: 'success' }
-    return { label: 'AI', className: 'ai' }
+    return { label: '大瓦特安运智能体', className: 'ai' }
   }
+
+  const grayPhases = useMemo(
+    () => [
+      { key: 'send', label: '发送分析上下文到柔性灰度平台', icon: Timer },
+      { key: 'compute', label: '灰度平台计算攻击源灰度值', icon: Cpu },
+      { key: 'return', label: '回传柔性处置步骤到处置场景', icon: GitMerge },
+    ],
+    [],
+  )
 
   const commandOptions = [
     { cmd: '/ask', help: '追问当前告警分析' },
@@ -119,6 +158,12 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
   }, [selectedEvent])
 
   useEffect(() => {
+    if (isDisposed) {
+      setTypedAnalysis(finalAnalysis)
+      setAnalysisTyping(false)
+      return undefined
+    }
+
     let index = 0
     setTypedAnalysis('')
     setAnalysisTyping(true)
@@ -130,10 +175,84 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
         window.clearInterval(timer)
         setAnalysisTyping(false)
       }
-    }, 12)
+    }, ANALYSIS_TYPING_INTERVAL_MS)
 
     return () => window.clearInterval(timer)
-  }, [finalAnalysis])
+  }, [finalAnalysis, isDisposed])
+
+  useEffect(() => {
+    setGrayStarted(false)
+    setGrayPhase(0)
+    setGrayLatency(0)
+    setGrayDone(false)
+    setGrayPhaseResult({})
+    disposedGrayReportedRef.current = ''
+  }, [selectedEvent.id])
+
+  useEffect(() => {
+    if (!isAnalysisComplete) return
+
+    if (isDisposed) {
+      setGrayStarted(true)
+      setGrayPhase(grayPhases.length)
+      setGrayLatency(0)
+      setGrayDone(true)
+      setGrayPhaseResult(
+        Object.fromEntries(grayPhases.map((_, index) => [index, '已完成（已处置事件）'])),
+      )
+
+      if (disposedGrayReportedRef.current !== selectedEvent.id) {
+        disposedGrayReportedRef.current = selectedEvent.id
+        onGrayAnalysisReady?.(selectedEvent.id, {
+          ...grayBlueprint,
+          latencyMs: 0,
+        })
+      }
+
+      return undefined
+    }
+
+    let cancelled = false
+    const begin = Date.now()
+    setGrayStarted(true)
+    setGrayPhase(0)
+    setGrayLatency(0)
+    setGrayDone(false)
+    setGrayPhaseResult({})
+
+    const run = async () => {
+      const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))
+      const durations = [1300, 1600, 1400]
+
+      for (let index = 0; index < durations.length; index += 1) {
+        const phaseStart = Date.now()
+        await wait(durations[index])
+        if (cancelled) return
+        setGrayPhase(index + 1)
+        setGrayLatency(Date.now() - begin)
+        setGrayPhaseResult((prev) => ({
+          ...prev,
+          [index]: `完成（${Date.now() - phaseStart}ms）`,
+        }))
+      }
+
+      if (cancelled) return
+
+      const latencyMs = Date.now() - begin
+      setGrayDone(true)
+      setGrayLatency(latencyMs)
+      onGrayAnalysisReady?.(selectedEvent.id, {
+        ...grayBlueprint,
+        latencyMs,
+      })
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAnalysisComplete, isDisposed, selectedEvent.id, grayBlueprint, grayPhases, onGrayAnalysisReady])
 
   useEffect(() => {
     const node = dialogueListRef.current
@@ -144,7 +263,17 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
     })
 
     return () => window.cancelAnimationFrame(raf)
-  }, [dialogues, reasoningItems])
+  }, [
+    dialogues,
+    reasoningItems,
+    typedAnalysis,
+    analysisTyping,
+    grayStarted,
+    grayPhase,
+    grayDone,
+    grayPhaseResult,
+    grayLatency,
+  ])
 
   const handleAsk = (event) => {
     event.preventDefault()
@@ -189,7 +318,7 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
 
         <div ref={dialogueListRef} className="dialogue-list combined chat-stream">
           <div className="dialogue-item chat-card ai reasoning-block">
-            <div className="chat-role">AI</div>
+            <div className="chat-role">大瓦特安运智能体</div>
             <div className="reasoning-controls">
               <button
                 type="button"
@@ -198,7 +327,7 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
                 aria-expanded={expandAll}
               >
                 <ChevronRight size={13} className={`thinking-chevron ${expandAll ? 'expanded' : ''}`} />
-                <span>AI 思考过程</span>
+                <span>大瓦特安运智能体思考过程</span>
                 <em>{expandAll ? `已展开 ${reasoningItems.length} 步 · 收起` : `共 ${reasoningItems.length} 步 · 展开`}</em>
               </button>
             </div>
@@ -223,10 +352,78 @@ function ReasoningLog({ selectedEvent, onFilterCommand }) {
 
             <div className="analysis-result-block">
               <span>分析结果</span>
-              <p>
-                {typedAnalysis}
+              <div className="analysis-result-content">
+                {analysisLines.map((line, index) => {
+                  const separatorIndex = line.indexOf('：')
+                  if (separatorIndex === -1) {
+                    return (
+                      <p key={`analysis-line-${index}`} className="analysis-line">
+                        {line}
+                      </p>
+                    )
+                  }
+
+                  const label = line.slice(0, separatorIndex + 1)
+                  const body = line.slice(separatorIndex + 1)
+                  return (
+                    <p key={`analysis-line-${index}`} className="analysis-line">
+                      <strong>{label}</strong>
+                      {body}
+                    </p>
+                  )
+                })}
                 {analysisTyping ? <i className="cursor">|</i> : null}
-              </p>
+              </div>
+            </div>
+
+            <div className="gray-analysis-block">
+              <div className="gray-analysis-head">
+                <span>灰度分析</span>
+                <em>
+                  {!grayStarted
+                    ? '等待分析结果输出完成...'
+                    : grayDone
+                      ? `交互完成 · 总时延 ${grayLatency}ms`
+                      : `交互中 · 已耗时 ${grayLatency}ms`}
+                </em>
+              </div>
+
+              <div className="gray-phase-list">
+                {grayPhases.map((phase, index) => {
+                  const Icon = phase.icon
+                  const state = grayPhase > index ? 'done' : grayPhase === index ? 'running' : 'pending'
+                  return (
+                    <div key={phase.key} className={`gray-phase-item ${state}`}>
+                      <Icon size={13} />
+                      <span>{phase.label}</span>
+                      <em>
+                        {state === 'done'
+                          ? grayPhaseResult[index] ?? '已完成'
+                          : state === 'running'
+                            ? '执行中...'
+                            : '等待中'}
+                      </em>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {grayDone ? (
+                <div className="gray-result-box">
+                  <div className="gray-result-head">
+                    <CheckCircle2 size={14} />
+                    <strong>灰度值 {grayBlueprint.score}（{grayBlueprint.level}）</strong>
+                  </div>
+                  <div className="gray-result-policy">
+                    执行策略：{grayBlueprint.autoExecute ? '钓鱼事件自动执行柔性处置' : '普通事件需用户确认后执行柔性处置'}
+                  </div>
+                  <ol>
+                    {grayBlueprint.steps.map((step, index) => (
+                      <li key={`${selectedEvent.id}-gray-step-${index}`}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
             </div>
           </div>
 

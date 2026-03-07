@@ -1,47 +1,44 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { PlayCircle, Send, ShieldCheck } from 'lucide-react'
+import { Send, ShieldCheck } from 'lucide-react'
 
-function ActionPanel({ selectedEvent, onCompleteDisposal }) {
+function ActionPanel({ selectedEvent, grayResult, onCompleteDisposal }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
-  const [workflow, setWorkflow] = useState(null)
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false)
+  const [executing, setExecuting] = useState(false)
+  const [executionLocked, setExecutionLocked] = useState(selectedEvent.disposalStatus === '已处置')
   const actionListRef = useRef(null)
+  const executionTokenRef = useRef(0)
+  const latestGrayResultIdRef = useRef('')
 
   const inputPlaceholder = useMemo(() => {
-    return '输入 /处置操作名称、/confirm 或 /cancel'
-  }, [selectedEvent])
-
-  const workflowTemplates = useMemo(
-    () =>
-      Object.fromEntries(
-        selectedEvent.actions.map((action) => [
-          action,
-          [
-            `步骤1：执行前检查 - 确认资产 ${selectedEvent.target} 与攻击源 ${selectedEvent.sourceIp} 关联无误。`,
-            `步骤2：准备执行 - 下发操作「${action}」到处置引擎，等待人工复核授权。`,
-            `步骤3：执行后验证 - 核查拦截结果、业务可用性与日志回传，完成闭环。`,
-          ],
-        ]),
-      ),
-    [selectedEvent],
-  )
+    return '输入 /confirm 执行、/cancel 取消，或点击快捷按钮'
+  }, [selectedEvent.id])
 
   useEffect(() => {
-    setWorkflow(null)
+    executionTokenRef.current += 1
+    latestGrayResultIdRef.current = ''
+    setAwaitingConfirm(false)
+    setExecuting(false)
+    setExecutionLocked(selectedEvent.disposalStatus === '已处置')
     setInput('')
     setMessages([
       {
         id: `boot-${selectedEvent.id}`,
         role: 'bot',
-        text: `可执行处置操作：${selectedEvent.actions.join('、')}。`,
+        text: `处置场景已就绪。当前可执行操作：${selectedEvent.actions.join('、')}。`,
       },
       {
         id: `sample-${selectedEvent.id}`,
         role: 'bot',
-        text: `交互样例：输入 /${selectedEvent.actions[0]} 后，按提示执行 /confirm（或 /cancel）。`,
+        text: '等待“柔性灰度平台”回传处置步骤。收到后将提示确认或自动执行。',
       },
     ])
-  }, [selectedEvent])
+  }, [selectedEvent.id])
+
+  const appendMessages = (newItems) => {
+    setMessages((prev) => [...prev, ...newItems])
+  }
 
   useEffect(() => {
     const node = actionListRef.current
@@ -58,109 +55,201 @@ function ActionPanel({ selectedEvent, onCompleteDisposal }) {
     if (role === 'user') return { label: '用户', className: 'user' }
     if (role === 'bot-warning') return { label: '系统提示', className: 'warning' }
     if (role === 'bot-success') return { label: '系统回执', className: 'success' }
-    return { label: 'AI', className: 'ai' }
+    return { label: '大瓦特安运智能体', className: 'ai' }
   }
 
-  const startWorkflow = (action) => {
-    const steps = workflowTemplates[action]
-    if (!steps) {
-      setMessages((prev) => [
-        ...prev,
-        { id: `warn-${Date.now()}`, role: 'bot-warning', text: `未识别的处置操作：${action}` },
+  const startExecution = async (plan, autoMode = false) => {
+    if (!plan || executing || executionLocked) return
+
+    const token = Date.now()
+    executionTokenRef.current = token
+    setExecuting(true)
+    setAwaitingConfirm(false)
+
+    appendMessages([
+      {
+        id: `dispatch-${token}`,
+        role: 'bot',
+        text: `已将 ${plan.steps.length} 条柔性处置步骤下发至柔性灰度平台，开始等待逐步执行回执。`,
+      },
+    ])
+
+    for (let index = 0; index < plan.steps.length; index += 1) {
+      if (executionTokenRef.current !== token) return
+
+      const step = plan.steps[index]
+      const stageStart = Date.now()
+      await new Promise((resolve) => window.setTimeout(resolve, 1000 + index * 120))
+
+      if (executionTokenRef.current !== token) return
+
+      appendMessages([
+        {
+          id: `ok-${token}-${index}`,
+          role: 'bot-success',
+          text: `步骤${index + 1}/${plan.steps.length}：${step} -> 执行成功（耗时 ${Date.now() - stageStart}ms）`,
+        },
       ])
+    }
+
+    if (executionTokenRef.current !== token) return
+
+    appendMessages([
+      {
+        id: `done-${token}`,
+        role: 'bot-success',
+        text: `${autoMode ? '自动' : '确认后'}柔性灰度处置已完成，事件已回传闭环状态。`,
+      },
+    ])
+    setExecutionLocked(true)
+    onCompleteDisposal?.(selectedEvent.id)
+    setExecuting(false)
+  }
+
+  useEffect(() => {
+    if (!grayResult) return
+
+    if (executionLocked || selectedEvent.disposalStatus === '已处置') return
+
+    const signature = `${grayResult.eventId}-${grayResult.updatedAt ?? 0}`
+    if (latestGrayResultIdRef.current === signature) return
+    latestGrayResultIdRef.current = signature
+
+    appendMessages([
+      {
+        id: `gray-recv-${Date.now()}`,
+        role: 'bot',
+        text: `柔性灰度平台已回传：灰度值 ${grayResult.score}（${grayResult.level}），处置步骤 ${grayResult.steps.length} 条。`,
+      },
+      {
+        id: `gray-steps-${Date.now() + 1}`,
+        role: 'bot',
+        text: grayResult.steps.map((step, index) => `步骤${index + 1}：${step}`).join('\n'),
+      },
+    ])
+
+    if (grayResult.autoExecute) {
+      appendMessages([
+        {
+          id: `gray-auto-${Date.now() + 2}`,
+          role: 'bot-warning',
+          text: '该事件属于钓鱼事件，按策略无需人工确认，已自动执行柔性灰度处置。',
+        },
+      ])
+      startExecution(grayResult, true)
       return
     }
 
-    setWorkflow({ action, stepIndex: 0, steps })
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: 'user', text: `/${action}` },
+    setAwaitingConfirm(true)
+    appendMessages([
       {
-        id: `b-${Date.now() + 1}`,
+        id: `gray-ask-${Date.now() + 3}`,
         role: 'bot',
-        text: `${steps[0]}\n请输入 /confirm 进行人工确认，或 /cancel 取消。`,
+        text: '是否执行上述柔性灰度处置步骤？请输入 /confirm 执行或 /cancel 取消。',
       },
     ])
-  }
+  }, [grayResult, executionLocked, selectedEvent.disposalStatus])
 
-  const handleConfirm = () => {
-    if (!workflow) return
-    const nextIndex = workflow.stepIndex + 1
+  const handleCommand = (rawText) => {
+    const text = rawText.trim()
+    if (!text) return
 
-    if (nextIndex >= workflow.steps.length) {
-      setMessages((prev) => [
-        ...prev,
-        { id: `c-${Date.now()}`, role: 'user', text: '/confirm' },
+    if (text === '/confirm') {
+      appendMessages([{ id: `u-${Date.now()}`, role: 'user', text }])
+      if (executionLocked || selectedEvent.disposalStatus === '已处置') {
+        appendMessages([
+          { id: `done-warn-${Date.now() + 1}`, role: 'bot-warning', text: '当前事件已完成处置，无需重复执行。' },
+        ])
+        setInput('')
+        return
+      }
+      if (!awaitingConfirm || !grayResult) {
+        appendMessages([
+          { id: `warn-${Date.now() + 1}`, role: 'bot-warning', text: '当前没有待确认的柔性处置任务。' },
+        ])
+      } else {
+        startExecution(grayResult)
+      }
+      setInput('')
+      return
+    }
+
+    if (text === '/cancel') {
+      appendMessages([{ id: `u-${Date.now()}`, role: 'user', text }])
+      if (!awaitingConfirm) {
+        appendMessages([
+          { id: `warn-${Date.now() + 1}`, role: 'bot-warning', text: '当前没有可取消的待执行柔性处置。' },
+        ])
+      } else {
+        setAwaitingConfirm(false)
+        appendMessages([
+          { id: `cancel-${Date.now() + 1}`, role: 'bot-warning', text: '已取消本次柔性灰度处置执行。' },
+        ])
+      }
+      setInput('')
+      return
+    }
+
+    if (text === '/柔性灰度处置') {
+      appendMessages([{ id: `u-${Date.now()}`, role: 'user', text }])
+      if (executionLocked || selectedEvent.disposalStatus === '已处置') {
+        appendMessages([
+          { id: `done-tip-${Date.now() + 1}`, role: 'bot', text: '该事件已完成处置，当前展示为最终结果。' },
+        ])
+        setInput('')
+        return
+      }
+      if (!grayResult) {
+        appendMessages([
+          {
+            id: `wait-${Date.now() + 1}`,
+            role: 'bot-warning',
+            text: '灰度分析结果尚未回传，请稍候。',
+          },
+        ])
+      } else if (grayResult.autoExecute) {
+        appendMessages([
+          { id: `auto-tip-${Date.now() + 2}`, role: 'bot', text: '该钓鱼事件已自动执行，无需重复触发。' },
+        ])
+      } else {
+        setAwaitingConfirm(true)
+        appendMessages([
+          { id: `ask-${Date.now() + 2}`, role: 'bot', text: '已准备好柔性处置步骤，请输入 /confirm 执行。' },
+        ])
+      }
+      setInput('')
+      return
+    }
+
+    if (text === '/一键封禁攻击IP') {
+      appendMessages([
+        { id: `u-${Date.now()}`, role: 'user', text },
         {
-          id: `done-${Date.now() + 1}`,
+          id: `legacy-${Date.now() + 1}`,
           role: 'bot-success',
-          text: `处置完成：${workflow.action}。已将该告警标记为已处置。`,
+          text: `传统处置已执行：攻击源 ${selectedEvent.sourceIp} 已加入临时封禁名单。`,
         },
       ])
       onCompleteDisposal?.(selectedEvent.id)
-      setWorkflow(null)
+      setInput('')
       return
     }
 
-    setWorkflow((prev) => ({ ...prev, stepIndex: nextIndex }))
-    setMessages((prev) => [
-      ...prev,
-      { id: `c-${Date.now()}`, role: 'user', text: '/confirm' },
+    appendMessages([
+      { id: `u-${Date.now()}`, role: 'user', text },
       {
-        id: `n-${Date.now() + 1}`,
-        role: 'bot',
-        text: `${workflow.steps[nextIndex]}\n请输入 /confirm 进行人工确认，或 /cancel 取消。`,
+        id: `bw-${Date.now() + 1}`,
+        role: 'bot-warning',
+        text: '请输入 /confirm、/cancel、/柔性灰度处置 或 /一键封禁攻击IP。',
       },
     ])
-  }
-
-  const handleCancel = () => {
-    if (!workflow) return
-    setMessages((prev) => [
-      ...prev,
-      { id: `x-${Date.now()}`, role: 'user', text: '/cancel' },
-      { id: `bx-${Date.now() + 1}`, role: 'bot-warning', text: `已取消处置流程：${workflow.action}` },
-    ])
-    setWorkflow(null)
   }
 
   const handleSubmit = (event) => {
     event.preventDefault()
     const text = input.trim()
     if (!text) return
-
-    if (text.startsWith('/')) {
-      const action = text.replace(/^\/+/, '').replace(/^\+/, '').trim()
-      if (action === 'confirm' || action === 'cancel') {
-        // pass through to command handlers below
-      } else {
-        startWorkflow(action)
-        setInput('')
-        return
-      }
-    }
-
-    if (text === '/confirm') {
-      handleConfirm()
-      setInput('')
-      return
-    }
-
-    if (text === '/cancel') {
-      handleCancel()
-      setInput('')
-      return
-    }
-
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: 'user', text },
-      {
-        id: `bw-${Date.now() + 1}`,
-        role: 'bot-warning',
-        text: '请输入 /处置操作名称，或使用 /confirm、/cancel 控制当前流程。',
-      },
-    ])
+    handleCommand(text)
     setInput('')
   }
 
@@ -185,15 +274,6 @@ function ActionPanel({ selectedEvent, onCompleteDisposal }) {
         ))}
       </div>
 
-      <div className="action-quick-ops">
-        {selectedEvent.actions.map((action) => (
-          <button type="button" key={action} className="action-btn" onClick={() => startWorkflow(action)}>
-            <PlayCircle size={13} />
-            {action}
-          </button>
-        ))}
-      </div>
-
       <form className="action-input-form" onSubmit={handleSubmit}>
         <input
           value={input}
@@ -206,12 +286,26 @@ function ActionPanel({ selectedEvent, onCompleteDisposal }) {
         </button>
       </form>
 
-      {workflow ? (
+      {awaitingConfirm ? (
         <div className="action-confirm-row">
-          <button type="button" className="primary-btn" onClick={handleConfirm}>
-            人工确认本步
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={() => {
+              handleCommand('/confirm')
+            }}
+            disabled={executing}
+          >
+            确认执行柔性处置
           </button>
-          <button type="button" className="secondary-btn" onClick={handleCancel}>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => {
+              handleCommand('/cancel')
+            }}
+            disabled={executing}
+          >
             取消处置
           </button>
         </div>

@@ -1,5 +1,6 @@
 import React from 'react'
-import { Activity, Sparkles } from 'lucide-react'
+import { Activity, FileText, Sparkles } from 'lucide-react'
+import ReportGeneratorDock from './ReportGeneratorDock'
 import {
   Area,
   AreaChart,
@@ -36,7 +37,17 @@ function TrendTooltip({ active, payload, label }) {
   )
 }
 
-function HeaderStats({ aiEfficiencyStages, attackTrend24h }) {
+function HeaderStats({
+  aiEfficiencyStages,
+  attackTrend24h,
+  templates,
+  selectedTemplate,
+  onTemplateChange,
+  onCreateTemplate,
+  reports,
+  onUpdateReport,
+  sampleReportLibrary,
+}) {
   const totalAlerts24h = attackTrend24h.reduce((sum, item) => sum + item.count, 0)
   const peak = Math.max(...attackTrend24h.map((item) => item.count))
   const avg = Math.round(attackTrend24h.reduce((sum, item) => sum + item.count, 0) / attackTrend24h.length)
@@ -69,14 +80,10 @@ function HeaderStats({ aiEfficiencyStages, attackTrend24h }) {
 
   return (
     <div className="header-wrap">
-      <div className="demo-card">
-        <span>【demo】智能安全运营中心</span>
-      </div>
-
       <div className="stat-card">
         <div className="card-title">
           <Sparkles size={16} />
-          <span>AI三级降噪</span>
+          <span>大瓦特模型三级降噪</span>
         </div>
         <div className="efficiency-flow">
           {stages.map((stage, index) => (
@@ -153,6 +160,25 @@ function HeaderStats({ aiEfficiencyStages, attackTrend24h }) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="chart-card report-center-card">
+        <div className="card-title">
+          <FileText size={16} />
+          <span>报告中心</span>
+        </div>
+        <div className="chart-area report-center-area">
+          <ReportGeneratorDock
+            templates={templates}
+            selectedTemplate={selectedTemplate}
+            onTemplateChange={onTemplateChange}
+            onCreateTemplate={onCreateTemplate}
+            reports={reports}
+            onUpdateReport={onUpdateReport}
+            sampleReportLibrary={sampleReportLibrary}
+            showTitle={false}
+          />
         </div>
       </div>
     </div>
