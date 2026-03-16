@@ -77,7 +77,29 @@ npm run build
 
 ## 公网服务器一键部署
 
-新增部署脚本：`scripts/deploy_server.sh`（Ubuntu/Debian）
+### 方式一：Docker 部署（推荐）
+
+适用于任何 Linux 发行版，完全避免系统兼容性问题。
+
+```bash
+# 安装 Docker（如未安装）
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+
+# 重新登录后执行部署
+chmod +x scripts/deploy_docker.sh
+./scripts/deploy_docker.sh
+```
+
+可选参数：
+
+```bash
+PORT=8080 BRANCH=main ./scripts/deploy_docker.sh
+```
+
+### 方式二：原生部署
+
+脚本 `scripts/deploy_server.sh`（支持 Ubuntu/Debian/CentOS/RHEL）
 
 默认行为：
 
